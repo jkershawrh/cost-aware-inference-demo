@@ -27,7 +27,7 @@ Copy `.env.example` to `.env` and export only the endpoints and credentials requ
 
 ## Hardware roles
 
-Red Hat OpenShift AI and Red Hat AI Inference provide the deployment, serving, lifecycle, and common API contract. Intel Xeon and AMD EPYC are CPU options. NVIDIA GPUs, AMD Instinct GPUs, and Intel Gaudi accelerators are options where supported by the installed Red Hat AI release. The response records the provider and whether that identity was observed or declared.
+Red Hat OpenShift AI and Red Hat AI Inference provide the deployment, serving, lifecycle, and common API contract. The live reference deployment uses Intel Xeon CPU and Intel Gaudi 3. Intel Xeon and AMD EPYC are supported CPU options; NVIDIA GPUs, AMD Instinct GPUs, and Intel Gaudi accelerators are options where supported by the installed Red Hat AI release. The response records the provider and whether that identity was observed or declared.
 
 ## OpenShift
 

@@ -88,6 +88,23 @@ export function BakeoffLive() {
         <button className="button button-primary" onClick={run} disabled={proof.status === 'loading'}>{proof.status === 'loading' ? 'Running three policies…' : proof.status === 'ready' ? 'Run again' : 'Run the bake-off →'}</button>
       </div>
 
+      <div className="hardware-portability" aria-label="Compute hardware context">
+        <div className="hardware-current">
+          <span>LIVE ON THIS CLUSTER</span>
+          <img src="/logos/intel.png" alt="Intel" />
+          <strong>Xeon CPU + Gaudi 3</strong>
+        </div>
+        <div className="hardware-targets">
+          <span>SUPPORTED TARGETS</span>
+          <div className="vendor-badges" aria-label="Intel, AMD, and NVIDIA compute options">
+            <span className="vendor-badge"><img src="/logos/intel.png" alt="Intel" /></span>
+            <span className="vendor-badge"><img src="/logos/amd.svg" alt="AMD" /></span>
+            <span className="vendor-badge vendor-badge-nvidia"><img src="/logos/nvidia.svg" alt="NVIDIA" /></span>
+          </div>
+        </div>
+        <small>This run uses Intel hardware. The same Red Hat AI Inference API contract can target supported Intel or AMD CPUs, NVIDIA or AMD GPUs, and Intel Gaudi accelerators.</small>
+      </div>
+
       {proof.status === 'idle' && <div className="bakeoff-idle"><div className="bakeoff-flow"><span>CLASSIFY</span><b>→</b><span>EXTRACT</span><b>→</b><span>MCP CHECK</span><b>→</b><span>SUMMARIZE</span></div><strong>The same checked-in discharge summary enters all three lanes at once.</strong><small>Cost inputs are assumptions. Quality is scored only against this named eval case.</small></div>}
       {proof.status === 'loading' && <div className="bakeoff-idle"><strong>CPU-only, accelerator-only, and heterogeneous are running in parallel.</strong><small>Every lane must return its own model, hardware identity, prompt, response, and source state.</small></div>}
 

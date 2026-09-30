@@ -42,6 +42,16 @@ describe('SceneRenderer', () => {
     expect(screen.getAllByText(/RESPONSE OUT/).length).toBeGreaterThan(0)
   })
 
+  it('identifies the live Intel system and the portable Red Hat compute targets', () => {
+    const scene = scenes.find((item) => item.id === 'bakeoff')!
+    render(<SceneRenderer scene={scene} brand={demoConfig.brand} />)
+    expect(screen.getByText('Xeon CPU + Gaudi 3')).toBeInTheDocument()
+    expect(screen.getAllByAltText('Intel')).toHaveLength(2)
+    expect(screen.getByAltText('AMD')).toBeInTheDocument()
+    expect(screen.getByAltText('NVIDIA')).toBeInTheDocument()
+    expect(screen.getByText(/This run uses Intel hardware/)).toBeInTheDocument()
+  })
+
   it('renders the statistic-grid scene', () => {
     const scene: SceneConfig = {
       id: 'coverage-stat-grid',
