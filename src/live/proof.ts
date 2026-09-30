@@ -2,8 +2,12 @@ import type { LiveDataAdapter, ProofState } from '../types'
 
 const sessionCache = new Map<string, ProofState>()
 
-export function getCachedProof(id: string) {
-  return sessionCache.get(id)
+export function getCachedProof<T extends Record<string, unknown> = Record<string, unknown>>(id: string) {
+  return sessionCache.get(id) as ProofState<T> | undefined
+}
+
+export function setCachedProof<T extends Record<string, unknown>>(id: string, state: ProofState<T>) {
+  sessionCache.set(id, state)
 }
 
 export async function runProof<T extends Record<string, unknown>>(

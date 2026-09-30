@@ -1,5 +1,6 @@
 import type { DemoConfig } from './types'
 import { BakeoffLive } from './scenes/BakeoffLive'
+import { BakeoffResolution } from './scenes/BakeoffResolution'
 
 const technicalTopology = {
   boundary: { label: 'Red Hat OpenShift AI', detail: 'one governed application and inference boundary' },
@@ -41,6 +42,7 @@ export const demoConfig: DemoConfig = {
     ] },
     { id: 'proof', label: '03', title: 'Live Bake-off', scenes: [
       { id: 'bakeoff', type: 'custom', beat: 'live-proof', component: BakeoffLive, speakerPrompt: 'State the source badge first. Run all lanes together, compare cost and quality, then open the prompts and outputs.' },
+      { id: 'resolution', type: 'custom', beat: 'trials', component: BakeoffResolution, speakerPrompt: 'First name what was held constant. Then distinguish placement, latency, cost, and quality. The fastest lane and lowest-cost passing lane may not be the same.' },
     ] },
     { id: 'mechanism', label: '04', title: 'Why It Works', scenes: [
       { id: 'policy', type: 'mechanisms', beat: 'trials', eyebrow: 'The placement rule', title: 'CPU first is a policy—not a slogan', body: 'A step stays on the least-cost tier only while it satisfies the contract.', mechanisms: [

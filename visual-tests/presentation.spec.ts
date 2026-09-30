@@ -12,6 +12,18 @@ test('live journey opens as a workload workspace with topology on demand', async
   await expect(page).toHaveScreenshot('live-journey.png', { fullPage: true })
 })
 
+test('resolution separates constants, differences, and decision in one viewport', async ({ page }) => {
+  await page.goto('/?act=2&scene=1')
+  await expect(page.getByRole('heading', { name: 'Same task. Different placement.' })).toBeVisible()
+  await expect(page.getByText('HELD CONSTANT')).toBeVisible()
+  await expect(page.getByText('WHAT THE RESULT MEANS')).toBeVisible()
+  const viewport = page.viewportSize()
+  if (viewport && viewport.width >= 1000) {
+    const dimensions = await page.evaluate(() => ({ height: document.documentElement.scrollHeight, viewport: window.innerHeight }))
+    expect(dimensions.height).toBeLessThanOrEqual(dimensions.viewport)
+  }
+})
+
 test('core controls are keyboard reachable', async ({ page }) => {
   await page.goto('/?act=0&scene=0')
   await page.keyboard.press('Tab')

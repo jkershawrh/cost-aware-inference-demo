@@ -141,6 +141,16 @@ describe('SceneRenderer', () => {
     expect(screen.getByText('Pass quality. Lower cost.')).toBeInTheDocument()
   })
 
+  it('resolves the bake-off by separating constants from policy differences', () => {
+    const scene = scenes.find((item) => item.id === 'resolution')!
+    render(<SceneRenderer scene={scene} brand={demoConfig.brand} />)
+    expect(screen.getByText('HELD CONSTANT')).toBeInTheDocument()
+    expect(screen.getByText('Same MCP evidence')).toBeInTheDocument()
+    expect(screen.getByText('Same API contract')).toBeInTheDocument()
+    expect(screen.getByText(/lowest-cost policy that passed quality/i)).toBeInTheDocument()
+    expect(screen.getByText(/Speed and lowest acceptable cost are different decisions/i)).toBeInTheDocument()
+  })
+
   const architectureScenes: SceneConfig[] = [
     {
       id: 'coverage-flow', type: 'architecture-flow', beat: 'system-reveal', title: 'Request flow',

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { bakeoffFixture, bakeoffFixtures, catalogFixture } from '../fixtures/bakeoff'
-import { runProof } from '../live/proof'
+import { runProof, setCachedProof } from '../live/proof'
 import type { ProofState } from '../types'
 import { SceneFrame } from './SceneFrame'
 
@@ -107,7 +107,9 @@ export function BakeoffLive() {
     const laneSources = new Map<BakeoffRun['policy'], ProofState<BakeoffResponse>['source']>()
     setRunning(true)
     setView('results')
-    setProof({ status: 'ready', data: initial, collectedAt })
+    const initialState: ProofState<BakeoffResponse> = { status: 'ready', data: initial, collectedAt }
+    setProof(initialState)
+    setCachedProof('latest-bakeoff', initialState)
 
     await Promise.allSettled(policies.map(async (policy) => {
       const fixtureRun = fixture.runs.find((item) => item.policy === policy)!
@@ -136,16 +138,18 @@ export function BakeoffLive() {
       setProof((current) => {
         if (!current.data) return current
         const sources = [...laneSources.values()]
-        const source = sources.every((value) => value === 'rehearsal' || value === 'offline')
+        const source: ProofState<BakeoffResponse>['source'] = sources.every((value) => value === 'rehearsal' || value === 'offline')
           ? 'rehearsal'
           : sources.some((value) => value !== 'live') || lane.source_state === 'mixed' ? 'mixed' : 'live'
         const errors = state.error ? [state.error] : []
-        return {
+        const next: ProofState<BakeoffResponse> = {
           ...current,
           source,
           error: [current.error, ...errors].filter(Boolean).join(' · ') || undefined,
           data: { ...current.data, collected_at: state.data!.collected_at, runs: current.data.runs.map((item) => item.policy === policy ? lane : item) },
         }
+        setCachedProof('latest-bakeoff', next)
+        return next
       })
     }))
     if (activeRun.current === controller) {
