@@ -6,6 +6,7 @@ The deployment owns the `cost-aware-inference-demo` namespace and does not modif
 2. Start the `presentation` binary build from the repository root.
 3. Start the `proof-api` binary build from `services/proof-api`.
 4. Populate `proof-api-secrets` only when an endpoint requires keys.
-5. Set `GPU_API_BASE` and `SEMANTIC_ROUTER_URL` only after those live services pass readiness checks.
+5. Verify the Intel Gaudi Base Operator exposes `habana.ai/gaudi` capacity before applying the checked-in Gaudi serving resources.
+6. Wait for `gaudi-llama-31-8b` to become ready, then run the three-policy bake-off.
 
-The checked-in cluster profile reuses the Triforce semantic-router image and its embedding-based classification pattern. It leaves the accelerator endpoint empty until allocatable hardware and a ready serving endpoint are verified. A missing required tier is returned as `unavailable`; it is never replaced with rehearsal data inside the API. The browser may show its clearly labeled checked-in rehearsal fixture if the proof API itself cannot be reached.
+The checked-in cluster profile reuses the Triforce semantic-router image and its embedding-based classification pattern. Its live accelerator tier uses the OpenShift AI-provided, digest-pinned Red Hat AI Inference Gaudi runtime and an OCI modelcar. The writable `habana-logs` volume is required by the restricted OpenShift runtime user. A missing required tier is returned as `unavailable`; it is never replaced with rehearsal data inside the API. The browser may show its clearly labeled checked-in rehearsal fixture if the proof API itself cannot be reached.

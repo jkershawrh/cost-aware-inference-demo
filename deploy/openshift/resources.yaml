@@ -64,10 +64,10 @@ data:
   CPU_HARDWARE_PROVIDER: Intel Xeon CPU (declared by the OpenShift AI hardware profile)
   CPU_INFERENCE_RUNTIME: Red Hat AI Inference vLLM CPU runtime
   INFERENCE_TLS_VERIFY: "false"
-  GPU_API_BASE: ""
-  GPU_MODEL: ""
-  GPU_HARDWARE_PROVIDER: accelerator tier not currently available
-  GPU_INFERENCE_RUNTIME: Red Hat AI Inference accelerator runtime
+  GPU_API_BASE: http://gaudi-llama-31-8b-predictor:8080
+  GPU_MODEL: gaudi-llama-31-8b
+  GPU_HARDWARE_PROVIDER: Intel Gaudi 3 accelerator (observed by OpenShift device allocation)
+  GPU_INFERENCE_RUNTIME: Red Hat AI Inference vLLM Gaudi runtime
   SEMANTIC_ROUTER_URL: http://semantic-router:8094
   MCP_GATEWAY_URL: ""
 ---
@@ -86,7 +86,7 @@ data:
     embedding: { model: all-MiniLM-L6-v2 }
     heterogeneous:
       enabled: true
-      gpu_model: accelerator-model-not-configured
+      gpu_model: gaudi-llama-31-8b
       escalation_routes: [complex]
     routes:
       - name: simple
@@ -98,7 +98,7 @@ data:
         anchors: ["Extract medications as structured JSON", "List entities from a clinical document"]
         keywords: [extract, list, structured]
       - name: complex
-        model: accelerator-model-not-configured
+        model: gaudi-llama-31-8b
         anchors: ["Synthesize clinical findings and risks into a physician handoff", "Reason across evidence and draft a final answer"]
         keywords: [synthesize, reasoning, handoff, draft]
 ---
@@ -122,7 +122,7 @@ spec:
           env:
             - { name: SEMANTIC_ROUTER_PORT, value: "8094" }
             - { name: HETEROGENEOUS_ROUTING, value: "true" }
-            - { name: GPU_COMPLEX_MODEL, value: accelerator-model-not-configured }
+            - { name: GPU_COMPLEX_MODEL, value: gaudi-llama-31-8b }
             - { name: ROUTES_CONFIG, value: /app/config/routes.yaml }
           volumeMounts:
             - { name: config, mountPath: /app/config, readOnly: true }
@@ -148,6 +148,70 @@ spec:
   selector: { app: semantic-router }
   ports:
     - { name: http, port: 8094, targetPort: http }
+---
+apiVersion: serving.kserve.io/v1alpha1
+kind: ServingRuntime
+metadata:
+  name: vllm-gaudi-runtime
+  namespace: cost-aware-inference-demo
+  annotations:
+    opendatahub.io/recommended-accelerators: '["habana.ai/gaudi"]'
+    opendatahub.io/runtime-version: v0.24.0
+    openshift.io/display-name: vLLM Intel Gaudi Accelerator ServingRuntime for KServe
+  labels:
+    opendatahub.io/dashboard: "true"
+spec:
+  annotations:
+    opendatahub.io/kserve-runtime: vllm
+    prometheus.io/path: /metrics
+    prometheus.io/port: "8080"
+  builtInAdapter:
+    modelLoadingTimeoutMillis: 90000
+  containers:
+    - name: kserve-container
+      image: registry.redhat.io/rhaii/vllm-gaudi-rhel9@sha256:f44bd360c45f3cd025491cfe608514263a1d00f8a6a5b6cc7ef9df31da749efd
+      command: [python, -m, vllm.entrypoints.openai.api_server]
+      args: [--port=8080, --model=/mnt/models, '--served-model-name={{.Name}}']
+      env:
+        - { name: HF_HOME, value: /tmp/hf_home }
+      ports:
+        - { containerPort: 8080, protocol: TCP }
+  multiModel: false
+  supportedModelFormats:
+    - { name: vLLM, autoSelect: false }
+---
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: gaudi-llama-31-8b
+  namespace: cost-aware-inference-demo
+  annotations:
+    openshift.io/display-name: Gaudi Llama 3.1 8B
+    opendatahub.io/hardware-profile-name: intel-gaudi
+    opendatahub.io/hardware-profile-namespace: redhat-ods-applications
+    opendatahub.io/model-type: generative
+    security.opendatahub.io/enable-auth: "false"
+    serving.kserve.io/deploymentMode: Standard
+spec:
+  predictor:
+    minReplicas: 1
+    maxReplicas: 1
+    model:
+      modelFormat: { name: vLLM }
+      runtime: vllm-gaudi-runtime
+      storageUri: oci://registry.redhat.io/rhelai1/modelcar-llama-3-1-8b-instruct:1.5
+      args: [--dtype=bfloat16, --max-model-len=4096, --max-num-seqs=16]
+      resources:
+        requests: { cpu: "8", memory: 32Gi, habana.ai/gaudi: "1" }
+        limits: { cpu: "16", memory: 64Gi, habana.ai/gaudi: "1" }
+      volumeMounts:
+        - { name: shm, mountPath: /dev/shm }
+        - { name: habana-logs, mountPath: /var/log/habana_logs }
+    volumes:
+      - name: shm
+        emptyDir: { medium: Memory, sizeLimit: 8Gi }
+      - name: habana-logs
+        emptyDir: {}
 ---
 apiVersion: apps/v1
 kind: Deployment
