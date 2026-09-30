@@ -22,6 +22,12 @@ describe('SceneRenderer', () => {
     expect(await screen.findByText('rehearsal')).toBeInTheDocument()
   })
 
+  it('renders the intro headline exactly once', () => {
+    const scene = scenes.find((item) => item.type === 'intro')!
+    render(<SceneRenderer scene={scene} brand={demoConfig.brand} />)
+    expect(screen.getAllByRole('heading', { name: scene.title })).toHaveLength(1)
+  })
+
   it('runs the three-policy proof and labels fallback evidence', async () => {
     const scene = scenes.find((item) => item.id === 'bakeoff')!
     render(<SceneRenderer scene={scene} brand={demoConfig.brand} />)

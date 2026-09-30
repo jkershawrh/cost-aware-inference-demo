@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { motion } from 'motion/react'
 import type { BaseScene } from '../types'
 
-export function SceneFrame({ scene, children }: { scene: BaseScene; children: ReactNode }) {
+export function SceneFrame({ scene, children, renderTitle = true }: { scene: BaseScene; children: ReactNode; renderTitle?: boolean }) {
   return (
     <motion.section
       className="scene"
@@ -13,7 +13,7 @@ export function SceneFrame({ scene, children }: { scene: BaseScene; children: Re
       aria-labelledby={`${scene.id}-title`}
     >
       {scene.eyebrow && <div className="eyebrow">{scene.eyebrow}</div>}
-      {scene.title && <h1 id={`${scene.id}-title`}>{scene.title}</h1>}
+      {renderTitle && scene.title && <h1 id={`${scene.id}-title`}>{scene.title}</h1>}
       {scene.body && <p className="lede">{scene.body}</p>}
       {children}
       {scene.citation && (
