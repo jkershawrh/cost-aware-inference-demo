@@ -31,7 +31,7 @@ export function BakeoffResolution() {
     id: 'bakeoff-resolution',
     beat: 'trials',
     eyebrow: 'Resolution',
-    title: 'Same task. Different placement.',
+    title: 'Three policies ran the same case. Here is what changed.',
     body: 'Separate what stayed constant from what the compute policy changed.',
   }}>
     <div className="resolution-shell" data-testid="bakeoff-resolution">
