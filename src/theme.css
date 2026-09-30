@@ -345,6 +345,11 @@ blockquote { font: 500 clamp(1.8rem, 4vw, 3.3rem)/1.28 'Red Hat Display'; margin
 .lane-metrics strong { display: block; margin-top: .2rem; font: 700 1.15rem 'Red Hat Mono'; }
 .lane-metrics .pass { color: var(--proof); }
 .lane-metrics .fail { color: var(--danger); }
+.eval-explanation { display: grid; gap: .25rem; padding: .45rem .55rem; background: var(--surface-2); border-left: 2px solid var(--proof); }
+.eval-explanation > span { color: var(--accent); font: 700 .56rem 'Red Hat Mono'; letter-spacing: .08em; }
+.eval-explanation > div { display: grid; grid-template-columns: minmax(90px, .4fr) 1fr; gap: .45rem; align-items: start; }
+.eval-explanation b { font-size: .62rem; text-transform: capitalize; }
+.eval-explanation small { color: var(--text-dim); font-size: .58rem; line-height: 1.3; }
 .lane-route { display: flex; gap: .45rem; color: var(--text-secondary); font: .62rem 'Red Hat Mono'; }
 .lane-route span { padding: .3rem .45rem; border: 1px solid var(--border); border-radius: 999px; }
 .lane-steps { display: grid; gap: .3rem; }

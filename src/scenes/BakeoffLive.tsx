@@ -22,7 +22,13 @@ export interface BakeoffRun {
   source_state: 'live' | 'mixed' | 'unavailable'
   error?: string
   modeled_cost?: { cost_per_task_usd: number; cost_per_1000_tasks_usd: number }
-  evaluation?: { score_pct: number; threshold_pct: number; passed: boolean; scope: string }
+  evaluation?: {
+    score_pct: number
+    threshold_pct: number
+    passed: boolean
+    scope: string
+    components?: Array<{ name: string; earned: number; possible: number; detail: string }>
+  }
   result?: {
     classification: string
     entities: Array<{ text: string; type: string }>
@@ -53,6 +59,17 @@ export interface BakeoffCatalog {
 
 const labels = { cpu_only: 'CPU only', gpu_only: 'Accelerator only', heterogeneous: 'Heterogeneous' }
 const policies: BakeoffRun['policy'][] = ['cpu_only', 'gpu_only', 'heterogeneous']
+
+export function EvaluationExplanation({ evaluation }: { evaluation: NonNullable<BakeoffRun['evaluation']> }) {
+  const deductions = evaluation.components?.filter((component) => component.earned < component.possible) ?? []
+  return <div className="eval-explanation">
+    <span>{deductions.length ? `WHY ${evaluation.score_pct}%` : 'EVALUATION'}</span>
+    {deductions.length ? deductions.map((component) => <div key={component.name}>
+      <b>{component.name}</b>
+      <small>{component.earned}/{component.possible} · {component.detail}</small>
+    </div>) : <small>{evaluation.components?.length ? 'All weighted case checks passed.' : 'Component breakdown unavailable for this fallback result.'}</small>}
+  </div>
+}
 
 export function BakeoffLive() {
   const [catalog, setCatalog] = useState<BakeoffCatalog>(catalogFixture)
@@ -206,6 +223,7 @@ export function BakeoffLive() {
               <header><span>{labels[item.policy]}</span>{winner?.policy === item.policy && <b>LOWEST COST PASS</b>}</header>
               {item.status !== 'completed' ? <div className={`lane-unavailable lane-${item.status}`}><strong>{item.status}</strong><small>{item.status === 'running' ? 'This lane is returning independently.' : item.error}</small></div> : <>
                 <div className="lane-metrics"><div><small>Execution</small><strong>{item.result?.execution_ms}ms</strong>{Boolean(item.result?.routing_ms) && <small>+ {item.result?.routing_ms}ms route plan</small>}</div><div><small>Cost / 1K</small><strong>${item.modeled_cost?.cost_per_1000_tasks_usd.toFixed(2)}</strong></div><div><small>Eval score</small><strong className={item.evaluation?.passed ? 'pass' : 'fail'}>{item.evaluation?.score_pct}%</strong></div></div>
+                {item.evaluation && <EvaluationExplanation evaluation={item.evaluation} />}
                 <div className="lane-route"><span>{cpuCalls} CPU calls</span><span>{gpuCalls} accelerator calls</span></div>
                 <div className="lane-steps">{item.result?.inference_log.filter((step) => step.accelerator !== 'tool').map((step) => <div key={step.node}><span className={step.accelerator}>{step.accelerator}</span><b>{step.node.replace('_', ' ')}</b><small>{step.model} · {step.latency_ms}ms</small></div>)}</div>
                 <small className="identity">{item.result?.inference_log.find((step) => step.accelerator !== 'tool')?.hardware_provider}</small>

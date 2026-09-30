@@ -27,7 +27,12 @@ export const bakeoffFixture: BakeoffResponse = {
     {
       policy: 'cpu_only', status: 'completed', source_state: 'mixed',
       modeled_cost: { cost_per_task_usd: 0, cost_per_1000_tasks_usd: 0 },
-      evaluation: { score_pct: 92, threshold_pct: 80, passed: true, scope: 'This checked-in eval case only' },
+      evaluation: { score_pct: 86.67, threshold_pct: 80, passed: true, scope: 'This checked-in eval case only', components: [
+        { name: 'classification', earned: 25, possible: 25, detail: 'expected discharge_summary; received discharge_summary' },
+        { name: 'entity recall', earned: 16.67, possible: 30, detail: '5/9 expected entities found; missing: Type 2 Diabetes, PCI, hypertension, CKD' },
+        { name: 'tool evidence', earned: 15, possible: 15, detail: '2/2 required evidence terms found' },
+        { name: 'summary fact coverage', earned: 30, possible: 30, detail: '4/4 required case facts preserved' },
+      ] },
       result: {
         classification: 'discharge_summary', execution_ms: 9200, routing_ms: 0, total_ms: 9200,
         entities: [{ text: 'Metformin', type: 'medication' }, { text: 'Lisinopril', type: 'medication' }, { text: 'Aspirin', type: 'medication' }, { text: 'Clopidogrel', type: 'medication' }, { text: 'STEMI', type: 'condition' }],
@@ -43,7 +48,12 @@ export const bakeoffFixture: BakeoffResponse = {
     {
       policy: 'gpu_only', status: 'completed', source_state: 'mixed',
       modeled_cost: { cost_per_task_usd: 0.028, cost_per_1000_tasks_usd: 28 },
-      evaluation: { score_pct: 96, threshold_pct: 80, passed: true, scope: 'This checked-in eval case only' },
+      evaluation: { score_pct: 90, threshold_pct: 80, passed: true, scope: 'This checked-in eval case only', components: [
+        { name: 'classification', earned: 25, possible: 25, detail: 'expected discharge_summary; received discharge_summary' },
+        { name: 'entity recall', earned: 20, possible: 30, detail: '6/9 expected entities found; missing: Type 2 Diabetes, hypertension, CKD' },
+        { name: 'tool evidence', earned: 15, possible: 15, detail: '2/2 required evidence terms found' },
+        { name: 'summary fact coverage', earned: 30, possible: 30, detail: '4/4 required case facts preserved' },
+      ] },
       result: {
         classification: 'discharge_summary', execution_ms: 2800, routing_ms: 0, total_ms: 2800,
         entities: [{ text: 'Metformin', type: 'medication' }, { text: 'Lisinopril', type: 'medication' }, { text: 'Aspirin', type: 'medication' }, { text: 'Clopidogrel', type: 'medication' }, { text: 'STEMI', type: 'condition' }, { text: 'PCI', type: 'procedure' }],
@@ -59,7 +69,12 @@ export const bakeoffFixture: BakeoffResponse = {
     {
       policy: 'heterogeneous', status: 'completed', source_state: 'mixed',
       modeled_cost: { cost_per_task_usd: 0.012, cost_per_1000_tasks_usd: 12 },
-      evaluation: { score_pct: 96, threshold_pct: 80, passed: true, scope: 'This checked-in eval case only' },
+      evaluation: { score_pct: 90, threshold_pct: 80, passed: true, scope: 'This checked-in eval case only', components: [
+        { name: 'classification', earned: 25, possible: 25, detail: 'expected discharge_summary; received discharge_summary' },
+        { name: 'entity recall', earned: 20, possible: 30, detail: '6/9 expected entities found; missing: Type 2 Diabetes, hypertension, CKD' },
+        { name: 'tool evidence', earned: 15, possible: 15, detail: '2/2 required evidence terms found' },
+        { name: 'summary fact coverage', earned: 30, possible: 30, detail: '4/4 required case facts preserved' },
+      ] },
       result: {
         classification: 'discharge_summary', execution_ms: 4300, routing_ms: 0, total_ms: 4300,
         entities: [{ text: 'Metformin', type: 'medication' }, { text: 'Lisinopril', type: 'medication' }, { text: 'Aspirin', type: 'medication' }, { text: 'Clopidogrel', type: 'medication' }, { text: 'STEMI', type: 'condition' }, { text: 'PCI', type: 'procedure' }],
@@ -82,6 +97,12 @@ const financialFixture: BakeoffResponse = {
   case_title: 'High-value international wire with a new beneficiary',
   runs: bakeoffFixture.runs.map((run) => ({
     ...run,
+    evaluation: { score_pct: 100, threshold_pct: 80, passed: true, scope: 'This checked-in eval case only', components: [
+      { name: 'classification', earned: 25, possible: 25, detail: 'expected high_value_wire_alert; received high_value_wire_alert' },
+      { name: 'entity recall', earned: 30, possible: 30, detail: '5/5 expected entities found' },
+      { name: 'tool evidence', earned: 15, possible: 15, detail: '3/3 required evidence terms found' },
+      { name: 'summary fact coverage', earned: 30, possible: 30, detail: '4/4 required case facts preserved' },
+    ] },
     result: run.result && {
       ...run.result,
       classification: 'high_value_wire_alert',

@@ -4,6 +4,7 @@ import { demoConfig } from '../demo.config'
 import { bakeoffFixture, catalogFixture } from '../fixtures/bakeoff'
 import '../live/demoAdapter'
 import type { SceneConfig } from '../types'
+import { EvaluationExplanation } from './BakeoffLive'
 import { SceneRenderer } from './SceneRenderer'
 
 describe('SceneRenderer', () => {
@@ -149,6 +150,21 @@ describe('SceneRenderer', () => {
     expect(screen.getByText('Same API contract')).toBeInTheDocument()
     expect(screen.getByText(/lowest-cost policy that passed quality/i)).toBeInTheDocument()
     expect(screen.getByText(/Speed and lowest acceptable cost are different decisions/i)).toBeInTheDocument()
+    expect(screen.getAllByText(/^WHY /)).toHaveLength(3)
+  })
+
+  it('explains a partial evaluation score instead of showing only the percentage', () => {
+    const partialFixture = structuredClone(bakeoffFixture)
+    partialFixture.runs[0].evaluation = {
+      score_pct: 92.5, threshold_pct: 80, passed: true, scope: 'This checked-in eval case only',
+      components: [
+        { name: 'classification', earned: 25, possible: 25, detail: 'matched' },
+        { name: 'summary fact coverage', earned: 22.5, possible: 30, detail: '3/4 required case facts preserved; missing: Clopidogrel' },
+      ],
+    }
+    render(<EvaluationExplanation evaluation={partialFixture.runs[0].evaluation} />)
+    expect(screen.getByText('WHY 92.5%')).toBeInTheDocument()
+    expect(screen.getByText(/missing: Clopidogrel/)).toBeInTheDocument()
   })
 
   const architectureScenes: SceneConfig[] = [

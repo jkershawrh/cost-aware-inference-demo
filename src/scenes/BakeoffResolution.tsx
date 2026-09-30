@@ -1,6 +1,6 @@
 import { bakeoffFixture } from '../fixtures/bakeoff'
 import { getCachedProof } from '../live/proof'
-import type { BakeoffResponse, BakeoffRun } from './BakeoffLive'
+import { EvaluationExplanation, type BakeoffResponse, type BakeoffRun } from './BakeoffLive'
 import { SceneFrame } from './SceneFrame'
 
 const labels: Record<BakeoffRun['policy'], string> = {
@@ -56,6 +56,7 @@ export function BakeoffResolution() {
             <div><span>Cost / 1K</span><b>${run.modeled_cost!.cost_per_1000_tasks_usd.toFixed(2)}</b></div>
             <div><span>Quality</span><b>{run.evaluation!.score_pct}%</b></div>
           </div>
+          <EvaluationExplanation evaluation={run.evaluation!} />
           <small>{run.policy === 'cpu_only' ? 'Lowest infrastructure cost when CPU capacity already exists.' : run.policy === 'gpu_only' ? 'Maximum acceleration, with accelerator cost on every model call.' : 'Structured work on CPU; harder synthesis on the accelerator.'}</small>
         </article>)}
       </div>

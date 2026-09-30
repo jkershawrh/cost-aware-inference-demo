@@ -35,6 +35,16 @@ def test_eval_is_case_scoped():
     assert "case" in scored.scope
 
 
+def test_eval_explains_a_partial_score_with_the_missing_case_fact():
+    partial = result()
+    partial.summary = "STEMI treated with PCI; continue Aspirin."
+    scored = evaluation.evaluate("discharge-stemi-001", partial, 80)
+    assert scored.score_pct == 92.5
+    summary_component = next(component for component in scored.components if component.name == "summary fact coverage")
+    assert summary_component.earned == 22.5
+    assert "missing: Clopidogrel" in summary_component.detail
+
+
 def test_cost_uses_visible_assumptions():
     assumptions = models.CostAssumptions(cpu_already_provisioned=True, cpu_hourly_usd=4, gpu_hourly_usd=36)
     assert evaluation.model_cost(result("cpu"), assumptions).cost_per_1000_tasks_usd == 0
