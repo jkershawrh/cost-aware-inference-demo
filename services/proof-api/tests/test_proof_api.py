@@ -75,6 +75,41 @@ async def test_bakeoff_runs_all_policies_in_parallel():
 
 
 @pytest.mark.asyncio
+async def test_heterogeneous_routing_plan_is_cached(monkeypatch):
+    import pipeline
+
+    pipeline.clear_routing_plan_cache()
+    calls = 0
+
+    async def fake_fetch_plan():
+        nonlocal calls
+        calls += 1
+        return {
+            node: pipeline.Target(
+                hardware="gpu" if node == "summarize" else "cpu",
+                model="model",
+                provider="provider",
+                runtime="runtime",
+                route="complex" if node == "summarize" else "simple",
+                method="embedding",
+                confidence=.9,
+                router_latency_ms=1200,
+            )
+            for node in pipeline.ROUTING_TEXT
+        }
+
+    monkeypatch.setattr(pipeline, "_fetch_heterogeneous_plan", fake_fetch_plan)
+    first = await pipeline.routing_plan(models.ExecutionPolicy.heterogeneous)
+    second = await pipeline.routing_plan(models.ExecutionPolicy.heterogeneous)
+
+    assert calls == 1
+    assert first["summarize"].router_latency_ms == 1200
+    assert second["summarize"].router_latency_ms == 0
+    assert second["summarize"].method == "embedding_cached"
+    pipeline.clear_routing_plan_cache()
+
+
+@pytest.mark.asyncio
 async def test_missing_gpu_is_explicitly_unavailable():
     import app
 

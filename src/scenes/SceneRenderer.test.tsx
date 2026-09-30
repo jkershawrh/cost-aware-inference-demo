@@ -1,12 +1,15 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { demoConfig } from '../demo.config'
+import { bakeoffFixture } from '../fixtures/bakeoff'
 import '../live/demoAdapter'
 import type { SceneConfig } from '../types'
 import { SceneRenderer } from './SceneRenderer'
 
 describe('SceneRenderer', () => {
   const scenes = demoConfig.acts.flatMap((act) => act.scenes)
+
+  afterEach(() => vi.unstubAllGlobals())
 
   for (const scene of scenes) {
     it(`renders ${scene.type}: ${scene.id}`, () => {
@@ -50,6 +53,34 @@ describe('SceneRenderer', () => {
     expect(screen.getByAltText('AMD')).toBeInTheDocument()
     expect(screen.getByAltText('NVIDIA')).toBeInTheDocument()
     expect(screen.getByText(/This run uses Intel hardware/)).toBeInTheDocument()
+  })
+
+  it('requests every policy independently and reveals completed lanes progressively', async () => {
+    const pending = new Map<string, (response: Response) => void>()
+    vi.stubGlobal('fetch', vi.fn((_url: string, init?: RequestInit) => {
+      const policy = JSON.parse(String(init?.body)).policies[0] as string
+      return new Promise<Response>((resolve) => pending.set(policy, resolve))
+    }))
+    const scene = scenes.find((item) => item.id === 'bakeoff')!
+    render(<SceneRenderer scene={scene} brand={demoConfig.brand} />)
+    fireEvent.click(screen.getByRole('button', { name: /run the bake-off/i }))
+
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(3))
+    for (const call of vi.mocked(fetch).mock.calls) {
+      expect(JSON.parse(String(call[1]?.body)).policies).toHaveLength(1)
+    }
+
+    const cpuRun = structuredClone(bakeoffFixture.runs.find((run) => run.policy === 'cpu_only')!)
+    cpuRun.result!.total_ms = 111
+    await act(async () => pending.get('cpu_only')!(new Response(JSON.stringify({ ...bakeoffFixture, policies_run: 1, runs: [cpuRun] }), { status: 200, headers: { 'Content-Type': 'application/json' } })))
+    expect(await screen.findByText('111ms')).toBeInTheDocument()
+    expect(screen.getAllByText('running')).toHaveLength(2)
+
+    for (const policy of ['gpu_only', 'heterogeneous']) {
+      const run = structuredClone(bakeoffFixture.runs.find((item) => item.policy === policy)!)
+      await act(async () => pending.get(policy)!(new Response(JSON.stringify({ ...bakeoffFixture, policies_run: 1, runs: [run] }), { status: 200, headers: { 'Content-Type': 'application/json' } })))
+    }
+    await waitFor(() => expect(screen.queryByText('running')).not.toBeInTheDocument())
   })
 
   it('renders the statistic-grid scene', () => {

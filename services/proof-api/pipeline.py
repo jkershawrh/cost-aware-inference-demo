@@ -1,12 +1,18 @@
+from __future__ import annotations
+
+import asyncio
 import json
+import logging
 import os
 import re
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 import httpx
 
 from models import Entity, ExecutionPolicy, PipelineResult, StepLog
+
+logger = logging.getLogger("proof-api.routing")
 
 CPU_API_BASE = os.environ.get("CPU_API_BASE", "")
 CPU_API_KEY = os.environ.get("CPU_API_KEY", "")
@@ -33,6 +39,9 @@ ROUTING_TEXT = {
     "summarize": "Synthesize clinical findings, procedures, medications, interactions, and risks into a physician handoff.",
 }
 
+_routing_plan_cache: dict[str, "Target"] | None = None
+_routing_plan_lock = asyncio.Lock()
+
 
 @dataclass(frozen=True)
 class Target:
@@ -46,7 +55,25 @@ class Target:
     router_latency_ms: int
 
 
+def clear_routing_plan_cache() -> None:
+    global _routing_plan_cache
+    _routing_plan_cache = None
+
+
+def routing_plan_warmed() -> bool:
+    return _routing_plan_cache is not None
+
+
+def _cached_routing_plan() -> dict[str, Target]:
+    assert _routing_plan_cache is not None
+    return {
+        node: replace(target, method=f"{target.method}_cached", router_latency_ms=0)
+        for node, target in _routing_plan_cache.items()
+    }
+
+
 async def routing_plan(policy: ExecutionPolicy) -> dict[str, Target]:
+    global _routing_plan_cache
     if policy == ExecutionPolicy.cpu_only:
         if not CPU_API_BASE:
             raise RuntimeError("CPU tier is not configured")
@@ -57,6 +84,18 @@ async def routing_plan(policy: ExecutionPolicy) -> dict[str, Target]:
             raise RuntimeError("GPU tier is not configured")
         return {node: Target("gpu", GPU_MODEL, GPU_HARDWARE_PROVIDER, GPU_INFERENCE_RUNTIME, "forced_gpu", "policy", 1.0, 0) for node in ROUTING_TEXT}
 
+    if _routing_plan_cache is not None:
+        return _cached_routing_plan()
+
+    async with _routing_plan_lock:
+        if _routing_plan_cache is not None:
+            return _cached_routing_plan()
+        plan = await _fetch_heterogeneous_plan()
+        _routing_plan_cache = plan
+        return plan
+
+
+async def _fetch_heterogeneous_plan() -> dict[str, Target]:
     if not SEMANTIC_ROUTER_URL:
         raise RuntimeError("semantic router is not configured")
     try:
@@ -73,7 +112,7 @@ async def routing_plan(policy: ExecutionPolicy) -> dict[str, Target]:
     if len(decisions) != len(ROUTING_TEXT):
         raise RuntimeError("semantic router returned an incomplete plan")
 
-    plan = {}
+    plan: dict[str, Target] = {}
     for node, decision in zip(ROUTING_TEXT, decisions):
         hardware = decision.get("hardware", "cpu")
         if hardware == "gpu" and not GPU_API_BASE:
@@ -91,6 +130,21 @@ async def routing_plan(policy: ExecutionPolicy) -> dict[str, Target]:
             router_latency_ms=int(decision.get("latency_ms", 0)),
         )
     return plan
+
+
+async def warm_routing_plan(retry_seconds: float = 5) -> None:
+    """Warm the fixed step-routing plan before a presenter starts the bake-off."""
+    if not SEMANTIC_ROUTER_URL or routing_plan_warmed():
+        return
+    while not routing_plan_warmed():
+        try:
+            await routing_plan(ExecutionPolicy.heterogeneous)
+            logger.info("Semantic routing plan warmed and cached")
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            logger.warning("Semantic routing warm-up failed; retrying in %ss: %s", retry_seconds, exc)
+            await asyncio.sleep(retry_seconds)
 
 
 def _extract_json_array(content: str) -> list:

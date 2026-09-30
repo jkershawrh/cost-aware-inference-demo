@@ -1,4 +1,5 @@
 import asyncio
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
 from fastapi import FastAPI, HTTPException
@@ -7,10 +8,21 @@ import evaluation
 import pipeline
 from models import BakeoffRequest, BakeoffResponse, ExecutionPolicy, PolicyRun
 
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    warm_task = asyncio.create_task(pipeline.warm_routing_plan())
+    try:
+        yield
+    finally:
+        warm_task.cancel()
+        await asyncio.gather(warm_task, return_exceptions=True)
+
 app = FastAPI(
     title="Cost-Aware Healthcare Inference Proof API",
     version="0.1.0",
     description="Runs one healthcare task through CPU-only, GPU-only, and heterogeneous policies without changing the application contract.",
+    lifespan=lifespan,
 )
 
 
@@ -21,6 +33,7 @@ async def health():
         "cpu_configured": bool(pipeline.CPU_API_BASE),
         "gpu_configured": bool(pipeline.GPU_API_BASE),
         "semantic_router_configured": bool(pipeline.SEMANTIC_ROUTER_URL),
+        "semantic_router_warmed": pipeline.routing_plan_warmed(),
         "mcp_configured": bool(pipeline.MCP_GATEWAY_URL),
         "cpu_hardware_provider": pipeline.CPU_HARDWARE_PROVIDER,
         "gpu_hardware_provider": pipeline.GPU_HARDWARE_PROVIDER,

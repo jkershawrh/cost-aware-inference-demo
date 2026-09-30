@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { bakeoffFixture } from '../fixtures/bakeoff'
 import { runProof } from '../live/proof'
 import type { ProofState } from '../types'
@@ -18,7 +18,7 @@ export interface BakeoffStep {
 
 export interface BakeoffRun {
   policy: 'cpu_only' | 'gpu_only' | 'heterogeneous'
-  status: 'completed' | 'unavailable' | 'failed'
+  status: 'running' | 'completed' | 'unavailable' | 'failed'
   source_state: 'live' | 'mixed' | 'unavailable'
   error?: string
   modeled_cost?: { cost_per_task_usd: number; cost_per_1000_tasks_usd: number }
@@ -43,36 +43,82 @@ export interface BakeoffResponse extends Record<string, unknown> {
 }
 
 const labels = { cpu_only: 'CPU only', gpu_only: 'Accelerator only', heterogeneous: 'Heterogeneous' }
+const policies: BakeoffRun['policy'][] = ['cpu_only', 'gpu_only', 'heterogeneous']
 
 export function BakeoffLive() {
   const [cpuExisting, setCpuExisting] = useState(true)
   const [cpuHourly, setCpuHourly] = useState(4)
   const [gpuHourly, setGpuHourly] = useState(36)
   const [proof, setProof] = useState<ProofState<BakeoffResponse>>({ status: 'idle' })
+  const [running, setRunning] = useState(false)
   const [selected, setSelected] = useState<BakeoffRun['policy']>('heterogeneous')
   const [view, setView] = useState<'results' | 'responses'>('results')
+  const activeRun = useRef<AbortController | null>(null)
+
+  useEffect(() => () => {
+    activeRun.current?.abort()
+    activeRun.current = null
+  }, [])
 
   const run = async () => {
-    setProof({ status: 'loading' })
-    const adapter = {
-      id: 'healthcare-bakeoff', timeoutMs: 180_000,
-      rehearsal: { data: bakeoffFixture, collectedAt: bakeoffFixture.collected_at },
-      async load(signal: AbortSignal) {
-        const response = await fetch('/proof/api/v1/bakeoff', {
-          method: 'POST', signal, headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            case_id: 'discharge-stemi-001',
-            quality_threshold_pct: 80,
-            cost_assumptions: { cpu_already_provisioned: cpuExisting, cpu_hourly_usd: cpuHourly, gpu_hourly_usd: gpuHourly },
-          }),
-        })
-        if (!response.ok) throw new Error(`Proof API returned HTTP ${response.status}`)
-        const data = await response.json() as BakeoffResponse
-        data.sourceState = data.runs.some((item) => item.status === 'completed' && item.source_state === 'mixed') ? 'mixed' : 'live'
-        return data
-      },
+    activeRun.current?.abort()
+    const controller = new AbortController()
+    activeRun.current = controller
+    const collectedAt = new Date().toISOString()
+    const initial: BakeoffResponse = {
+      case_id: 'discharge-stemi-001',
+      case_title: 'Cardiac discharge summary with medication interaction context',
+      collected_at: collectedAt,
+      policies_run: policies.length,
+      runs: policies.map((policy) => ({ policy, status: 'running', source_state: 'unavailable' })),
     }
-    setProof(await runProof(adapter))
+    const laneSources = new Map<BakeoffRun['policy'], ProofState<BakeoffResponse>['source']>()
+    setRunning(true)
+    setView('results')
+    setProof({ status: 'ready', data: initial, collectedAt })
+
+    await Promise.allSettled(policies.map(async (policy) => {
+      const fixtureRun = bakeoffFixture.runs.find((item) => item.policy === policy)!
+      const rehearsal = { ...bakeoffFixture, policies_run: 1, runs: [fixtureRun] }
+      const state = await runProof<BakeoffResponse>({
+        id: `healthcare-bakeoff-${policy}`, timeoutMs: 180_000,
+        rehearsal: { data: rehearsal, collectedAt: bakeoffFixture.collected_at },
+        async load(signal: AbortSignal) {
+          const response = await fetch('/proof/api/v1/bakeoff', {
+            method: 'POST', signal, headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              case_id: 'discharge-stemi-001', policies: [policy], quality_threshold_pct: 80,
+              cost_assumptions: { cpu_already_provisioned: cpuExisting, cpu_hourly_usd: cpuHourly, gpu_hourly_usd: gpuHourly },
+            }),
+          })
+          if (!response.ok) throw new Error(`Proof API returned HTTP ${response.status}`)
+          const data = await response.json() as BakeoffResponse
+          data.sourceState = data.runs.some((item) => item.status === 'completed' && item.source_state === 'mixed') ? 'mixed' : 'live'
+          return data
+        },
+      }, controller.signal)
+      if (controller.signal.aborted || !state.data) return
+      const lane = state.data.runs[0]
+      laneSources.set(policy, state.source)
+      setProof((current) => {
+        if (!current.data) return current
+        const sources = [...laneSources.values()]
+        const source = sources.every((value) => value === 'rehearsal' || value === 'offline')
+          ? 'rehearsal'
+          : sources.some((value) => value !== 'live') || lane.source_state === 'mixed' ? 'mixed' : 'live'
+        const errors = state.error ? [state.error] : []
+        return {
+          ...current,
+          source,
+          error: [current.error, ...errors].filter(Boolean).join(' · ') || undefined,
+          data: { ...current.data, collected_at: state.data!.collected_at, runs: current.data.runs.map((item) => item.policy === policy ? lane : item) },
+        }
+      })
+    }))
+    if (activeRun.current === controller) {
+      activeRun.current = null
+      setRunning(false)
+    }
   }
 
   const completed = proof.data?.runs.filter((item) => item.status === 'completed') ?? []
@@ -85,7 +131,7 @@ export function BakeoffLive() {
         <label><input type="checkbox" checked={cpuExisting} onChange={(event) => setCpuExisting(event.target.checked)} /> CPUs already provisioned</label>
         <label>Dedicated CPU $/hr <input type="number" min="0" step="0.5" value={cpuHourly} onChange={(event) => setCpuHourly(Number(event.target.value))} /></label>
         <label>Accelerator $/hr <input type="number" min="0" step="1" value={gpuHourly} onChange={(event) => setGpuHourly(Number(event.target.value))} /></label>
-        <button className="button button-primary" onClick={run} disabled={proof.status === 'loading'}>{proof.status === 'loading' ? 'Running three policies…' : proof.status === 'ready' ? 'Run again' : 'Run the bake-off →'}</button>
+        <button className="button button-primary" onClick={run} disabled={running}>{running ? 'Running three policies…' : proof.status === 'ready' ? 'Run again' : 'Run the bake-off →'}</button>
       </div>
 
       <div className="hardware-portability" aria-label="Compute hardware context">
@@ -106,10 +152,8 @@ export function BakeoffLive() {
       </div>
 
       {proof.status === 'idle' && <div className="bakeoff-idle"><div className="bakeoff-flow"><span>CLASSIFY</span><b>→</b><span>EXTRACT</span><b>→</b><span>MCP CHECK</span><b>→</b><span>SUMMARIZE</span></div><strong>The same checked-in discharge summary enters all three lanes at once.</strong><small>Cost inputs are assumptions. Quality is scored only against this named eval case.</small></div>}
-      {proof.status === 'loading' && <div className="bakeoff-idle"><strong>CPU-only, accelerator-only, and heterogeneous are running in parallel.</strong><small>Every lane must return its own model, hardware identity, prompt, response, and source state.</small></div>}
-
       {proof.status === 'ready' && proof.data && <>
-        <div className="bakeoff-view-tabs"><button className={view === 'results' ? 'active' : ''} onClick={() => setView('results')}>Measured comparison</button><button className={view === 'responses' ? 'active' : ''} onClick={() => setView('responses')}>Prompts + responses</button><span className={`source-badge source-${proof.source}`}>{proof.source}</span></div>
+        <div className="bakeoff-view-tabs"><button className={view === 'results' ? 'active' : ''} onClick={() => setView('results')}>Measured comparison</button><button disabled={running} className={view === 'responses' ? 'active' : ''} onClick={() => setView('responses')}>Prompts + responses</button>{running ? <span className="source-badge source-mixed">{completed.length} / 3 complete</span> : <span className={`source-badge source-${proof.source}`}>{proof.source}</span>}</div>
         {proof.error && <div className="fallback-note">Live endpoint unavailable: showing checked-in rehearsal evidence.</div>}
         {proof.source === 'mixed' && <div className="fallback-note">Live inference · rehearsal MCP evidence. Inspect each step for its source.</div>}
         {view === 'results' ? <div className="bakeoff-grid">
@@ -118,7 +162,7 @@ export function BakeoffLive() {
             const gpuCalls = item.result?.inference_log.filter((step) => step.accelerator === 'gpu').length ?? 0
             return <button className={`bakeoff-lane ${selected === item.policy ? 'selected' : ''} ${winner?.policy === item.policy ? 'winner' : ''}`} key={item.policy} onClick={() => setSelected(item.policy)}>
               <header><span>{labels[item.policy]}</span>{winner?.policy === item.policy && <b>LOWEST COST PASS</b>}</header>
-              {item.status !== 'completed' ? <div className="lane-unavailable"><strong>{item.status}</strong><small>{item.error}</small></div> : <>
+              {item.status !== 'completed' ? <div className={`lane-unavailable lane-${item.status}`}><strong>{item.status}</strong><small>{item.status === 'running' ? 'This lane is returning independently.' : item.error}</small></div> : <>
                 <div className="lane-metrics"><div><small>Task latency</small><strong>{item.result?.total_ms}ms</strong></div><div><small>Cost / 1K</small><strong>${item.modeled_cost?.cost_per_1000_tasks_usd.toFixed(2)}</strong></div><div><small>Eval score</small><strong className={item.evaluation?.passed ? 'pass' : 'fail'}>{item.evaluation?.score_pct}%</strong></div></div>
                 <div className="lane-route"><span>{cpuCalls} CPU calls</span><span>{gpuCalls} accelerator calls</span></div>
                 <div className="lane-steps">{item.result?.inference_log.filter((step) => step.accelerator !== 'tool').map((step) => <div key={step.node}><span className={step.accelerator}>{step.accelerator}</span><b>{step.node.replace('_', ' ')}</b><small>{step.model} · {step.latency_ms}ms</small></div>)}</div>

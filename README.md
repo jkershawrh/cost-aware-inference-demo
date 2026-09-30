@@ -2,6 +2,8 @@
 
 A standalone Triforce-style presentation and live healthcare bake-off for Red Hat AI. The same four-step workload runs under CPU-only, accelerator-only, and heterogeneous placement policies. The UI exposes latency, modeled cost, case-specific evaluation, routing decisions, prompts, responses, model identity, and declared hardware identity.
 
+The three policies start concurrently and return progressively, so a completed lane is visible without waiting for the slowest one. The fixed semantic-routing plan is warmed and cached when the proof service starts; the live run still records the selected route while avoiding repeated embedding startup cost.
+
 This project does not replace or modify Triforce. Triforce is the presentation and evidence-pattern reference.
 
 ## Run locally
