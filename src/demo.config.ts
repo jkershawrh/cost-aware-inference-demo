@@ -28,7 +28,7 @@ export const demoConfig: DemoConfig = {
   brand: { primary: { name: 'Red Hat', logo: '/logos/redhat.svg', alt: 'Red Hat' }, attribution: 'Red Hat AI · open compute choice' },
   acts: [
     { id: 'decision', label: '01', title: 'The Decision', scenes: [
-      { id: 'intro', type: 'intro', beat: 'ordinary-world', title: 'Nowadays, an agentic task can become dozens of inference calls', subtitle: 'The question has shifted from “CPU or GPU?” to “which step belongs where?”', speakerPrompt: 'Open with the customer decision: protect quality while reducing the cost of a completed task.' },
+      { id: 'intro', type: 'intro', beat: 'ordinary-world', title: 'An agentic task can become dozens of inference calls', subtitle: 'The question has shifted from “cpu or gpu?” to “which step belongs where?”', speakerPrompt: 'Open with the customer decision: protect quality while reducing the cost of a completed task.' },
       { id: 'reframe', type: 'reframe', beat: 'stakes', eyebrow: 'The status quo assumption', title: 'Stop buying one compute answer for every inference step', before: 'Treat the hardest inference step as the ceiling for all of them', after: 'Place each step at its minimum viable compute tier', detail: 'Classification, extraction, tool selection, and summarization do not have the same latency, schema, or reasoning needs.', speakerPrompt: 'Do not claim CPU replaces accelerators. The claim is deliberate placement against a visible acceptance rule.' },
     ] },
     { id: 'architecture', label: '02', title: 'Guided Architecture', scenes: [
