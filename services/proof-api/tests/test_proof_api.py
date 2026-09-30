@@ -41,6 +41,14 @@ def test_cost_uses_visible_assumptions():
     assert evaluation.model_cost(result("gpu"), assumptions).cost_per_1000_tasks_usd == pytest.approx(6, abs=.0001)
 
 
+def test_medication_names_are_normalized_before_mcp_lookup():
+    import pipeline
+
+    assert pipeline.normalize_medication_name("Aspirin 81mg") == "Aspirin"
+    assert pipeline.normalize_medication_name("Metformin 500 mg twice daily") == "Metformin"
+    assert pipeline.normalize_medication_name("Vitamin B12") == "Vitamin B12"
+
+
 @pytest.mark.asyncio
 async def test_bakeoff_runs_all_policies_in_parallel():
     import app

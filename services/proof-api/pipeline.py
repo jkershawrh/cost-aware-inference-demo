@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import time
 from dataclasses import dataclass
 
@@ -102,6 +103,11 @@ def _extract_json_array(content: str) -> list:
         return value if isinstance(value, list) else []
     except json.JSONDecodeError:
         return []
+
+
+def normalize_medication_name(value: str) -> str:
+    """Remove a trailing numeric dose before sending a drug name to MCP."""
+    return re.split(r"\s+(?=\d)", value.strip(), maxsplit=1)[0].strip(" ,;-")
 
 
 async def _chat(node: str, target: Target, prompt: str, max_tokens: int) -> StepLog:
@@ -225,7 +231,12 @@ async def run_pipeline(text: str, policy: ExecutionPolicy) -> PipelineResult:
         if isinstance(item, dict) and item.get("text") and item.get("type")
     ]
 
-    medications = [entity.text for entity in entities if entity.type == "medication"]
+    medications = [
+        normalized
+        for entity in entities
+        if entity.type == "medication"
+        if (normalized := normalize_medication_name(entity.text))
+    ]
     interactions, interaction_log = await _interactions(medications)
     logs.append(interaction_log)
 
