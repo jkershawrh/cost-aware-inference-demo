@@ -184,13 +184,28 @@ export function BakeoffLive() {
   return <SceneFrame scene={{ id: 'bakeoff-live', beat: 'live-proof', eyebrow: `Live ${verticalInfo.label} workload`, title: 'One task. Three compute policies. One acceptance rule.', body: 'Choose the workload and real model endpoints, run all three lanes in parallel, then inspect prompts, responses, routes, latency, modeled cost, and case-specific quality.' }}>
     <div className="bakeoff-shell" onClick={(event) => event.stopPropagation()}>
       <div className="bakeoff-toolbar">
-        <label>Industry <select value={vertical} onChange={(event) => { setVertical(event.target.value as typeof vertical); setProof({ status: 'idle' }) }}>{catalog.verticals.map((item) => <option value={item.id} key={item.id}>{item.label}</option>)}</select></label>
-        <label>CPU model <select value={cpuModel} onChange={(event) => { setCpuModel(event.target.value); setProof({ status: 'idle' }) }}>{catalog.cpu_models.map((item) => <option value={item.id} key={item.id} disabled={!item.available}>{item.label}{item.available ? '' : ' · starting'}</option>)}</select></label>
-        <label>Accelerator model <select value={acceleratorModel} onChange={(event) => { setAcceleratorModel(event.target.value); setProof({ status: 'idle' }) }}>{catalog.accelerator_models.map((item) => <option value={item.id} key={item.id} disabled={!item.available}>{item.label}{item.available ? '' : ' · starting'}</option>)}</select></label>
-        <label><input type="checkbox" checked={cpuExisting} onChange={(event) => setCpuExisting(event.target.checked)} /> CPUs already provisioned</label>
-        <label>Dedicated CPU $/hr <input type="number" min="0" step="0.5" value={cpuHourly} onChange={(event) => setCpuHourly(Number(event.target.value))} /></label>
-        <label>Accelerator $/hr <input type="number" min="0" step="1" value={gpuHourly} onChange={(event) => setGpuHourly(Number(event.target.value))} /></label>
-        <button className="button button-primary" onClick={run} disabled={running}>{running ? 'Running three policies…' : proof.status === 'ready' ? 'Run again' : 'Run the bake-off →'}</button>
+        <fieldset className="toolbar-group toolbar-workload">
+          <legend>1 · Workload</legend>
+          <label><span>Industry</span><select value={vertical} onChange={(event) => { setVertical(event.target.value as typeof vertical); setProof({ status: 'idle' }) }}>{catalog.verticals.map((item) => <option value={item.id} key={item.id}>{item.label}</option>)}</select></label>
+        </fieldset>
+        <fieldset className="toolbar-group toolbar-models">
+          <legend>2 · Models</legend>
+          <label><span>CPU</span><select value={cpuModel} onChange={(event) => { setCpuModel(event.target.value); setProof({ status: 'idle' }) }}>{catalog.cpu_models.map((item) => <option value={item.id} key={item.id} disabled={!item.available}>{item.label}{item.available ? '' : ' · starting'}</option>)}</select></label>
+          <label><span>Accelerator</span><select value={acceleratorModel} onChange={(event) => { setAcceleratorModel(event.target.value); setProof({ status: 'idle' }) }}>{catalog.accelerator_models.map((item) => <option value={item.id} key={item.id} disabled={!item.available}>{item.label}{item.available ? '' : ' · starting'}</option>)}</select></label>
+        </fieldset>
+        <fieldset className="toolbar-group toolbar-cost">
+          <legend>3 · Cost assumptions</legend>
+          <label className="toolbar-check"><input type="checkbox" checked={cpuExisting} onChange={(event) => setCpuExisting(event.target.checked)} /><span>Existing CPU capacity</span></label>
+          <div className="toolbar-cost-fields">
+            <label className={cpuExisting ? 'inactive' : ''}><span>CPU $/hr</span><input aria-label="Dedicated CPU dollars per hour" type="number" min="0" step="0.5" value={cpuHourly} disabled={cpuExisting} onChange={(event) => setCpuHourly(Number(event.target.value))} /></label>
+            <label><span>Accelerator $/hr</span><input type="number" min="0" step="1" value={gpuHourly} onChange={(event) => setGpuHourly(Number(event.target.value))} /></label>
+          </div>
+        </fieldset>
+        <div className="toolbar-action">
+          <span>4 · Compare</span>
+          <button className="button button-primary" onClick={run} disabled={running}>{running ? 'Running three policies…' : proof.status === 'ready' ? 'Run again' : 'Run three policies →'}</button>
+          <small>Runs concurrently</small>
+        </div>
       </div>
 
       <div className="hardware-portability" aria-label="Compute hardware context">

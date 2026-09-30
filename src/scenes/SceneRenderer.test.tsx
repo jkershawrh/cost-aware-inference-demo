@@ -35,7 +35,7 @@ describe('SceneRenderer', () => {
   it('runs the three-policy proof and labels fallback evidence', async () => {
     const scene = scenes.find((item) => item.id === 'bakeoff')!
     render(<SceneRenderer scene={scene} brand={demoConfig.brand} />)
-    fireEvent.click(screen.getByRole('button', { name: /run the bake-off/i }))
+    fireEvent.click(screen.getByRole('button', { name: /run three policies/i }))
     expect(await screen.findByText('rehearsal')).toBeInTheDocument()
     expect(screen.getByText('CPU only')).toBeInTheDocument()
     expect(screen.getByText('Accelerator only')).toBeInTheDocument()
@@ -56,6 +56,16 @@ describe('SceneRenderer', () => {
     expect(screen.getByText(/This run uses Intel hardware/)).toBeInTheDocument()
   })
 
+  it('organizes bake-off controls into workload, models, cost, and compare steps', () => {
+    const scene = scenes.find((item) => item.id === 'bakeoff')!
+    render(<SceneRenderer scene={scene} brand={demoConfig.brand} />)
+    expect(screen.getByText('1 · Workload')).toBeInTheDocument()
+    expect(screen.getByText('2 · Models')).toBeInTheDocument()
+    expect(screen.getByText('3 · Cost assumptions')).toBeInTheDocument()
+    expect(screen.getByText('4 · Compare')).toBeInTheDocument()
+    expect(screen.getByLabelText('Dedicated CPU dollars per hour')).toBeDisabled()
+  })
+
   it('requests every policy independently and reveals completed lanes progressively', async () => {
     const pending = new Map<string, (response: Response) => void>()
     vi.stubGlobal('fetch', vi.fn((url: string, init?: RequestInit) => {
@@ -65,7 +75,7 @@ describe('SceneRenderer', () => {
     }))
     const scene = scenes.find((item) => item.id === 'bakeoff')!
     render(<SceneRenderer scene={scene} brand={demoConfig.brand} />)
-    fireEvent.click(screen.getByRole('button', { name: /run the bake-off/i }))
+    fireEvent.click(screen.getByRole('button', { name: /run three policies/i }))
 
     await waitFor(() => expect(vi.mocked(fetch).mock.calls.filter((call) => call[1]?.method === 'POST')).toHaveLength(3))
     for (const call of vi.mocked(fetch).mock.calls.filter((item) => item[1]?.method === 'POST')) {

@@ -309,11 +309,20 @@ blockquote { font: 500 clamp(1.8rem, 4vw, 3.3rem)/1.28 'Red Hat Display'; margin
 .scene:has(.bakeoff-shell) > h1 { font-size: clamp(1.7rem, 2.6vw, 2.7rem); margin: .2rem auto .35rem; }
 .scene:has(.bakeoff-shell) > .lede { margin-bottom: .65rem; font-size: .9rem; }
 .bakeoff-shell { width: 100%; min-height: 0; display: flex; flex: 1; flex-direction: column; gap: .65rem; text-align: left; }
-.bakeoff-toolbar { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: .6rem; padding: .6rem; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-1); }
-.bakeoff-toolbar label { display: flex; align-items: center; gap: .4rem; color: var(--text-secondary); font-size: .7rem; }
+.bakeoff-toolbar { display: grid; grid-template-columns: minmax(150px, .7fr) minmax(360px, 1.7fr) minmax(300px, 1.3fr) minmax(160px, .7fr); gap: .55rem; padding: .6rem; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface-1); }
+.toolbar-group { min-width: 0; display: grid; align-content: start; gap: .4rem; margin: 0; padding: .45rem .6rem .55rem; border: 1px solid var(--border); border-radius: 4px; }
+.toolbar-group legend, .toolbar-action > span { padding: 0 .25rem; color: var(--accent); font: 700 .56rem 'Red Hat Mono'; letter-spacing: .08em; text-transform: uppercase; }
+.bakeoff-toolbar label { min-width: 0; display: grid; grid-template-columns: 68px minmax(0, 1fr); align-items: center; gap: .4rem; color: var(--text-secondary); font-size: .66rem; }
+.toolbar-workload label { grid-template-columns: 1fr; }
+.toolbar-check { grid-template-columns: auto 1fr !important; }
+.toolbar-cost-fields { display: grid; grid-template-columns: 1fr 1.25fr; gap: .4rem; }
+.toolbar-cost-fields label { grid-template-columns: 1fr; gap: .2rem; }
+.bakeoff-toolbar label.inactive { opacity: .45; }
 .bakeoff-toolbar input[type='number'] { width: 64px; padding: .35rem; color: var(--text); background: var(--surface-2); border: 1px solid var(--border); border-radius: 3px; }
-.bakeoff-toolbar select { max-width: 210px; padding: .35rem; color: var(--text); background: var(--surface-2); border: 1px solid var(--border); border-radius: 3px; font: .65rem 'Red Hat Text'; }
-.bakeoff-toolbar .button { margin-left: auto; }
+.bakeoff-toolbar select { width: 100%; min-width: 0; padding: .35rem; color: var(--text); background: var(--surface-2); border: 1px solid var(--border); border-radius: 3px; font: .65rem 'Red Hat Text'; }
+.toolbar-action { display: grid; align-content: center; gap: .35rem; padding: .3rem; }
+.toolbar-action .button { width: 100%; white-space: nowrap; }
+.toolbar-action small { color: var(--text-dim); font-size: .58rem; text-align: center; }
 .hardware-portability { display: grid; grid-template-columns: auto auto minmax(260px, 1fr); align-items: center; gap: .8rem; padding: .55rem .7rem; border-left: 3px solid var(--rh-red); background: var(--surface-1); }
 .hardware-current, .hardware-targets, .vendor-badges, .vendor-badge { display: flex; align-items: center; }
 .hardware-current, .hardware-targets { gap: .55rem; }
@@ -418,6 +427,8 @@ blockquote { font: 500 clamp(1.8rem, 4vw, 3.3rem)/1.28 'Red Hat Display'; margin
   .topology-edge { width: auto; height: 28px; transform: rotate(90deg); }
   .topology-edge span { display: none; }
   .bakeoff-toolbar .button { width: 100%; margin-left: 0; }
+  .bakeoff-toolbar { grid-template-columns: 1fr; }
+  .toolbar-models, .toolbar-cost-fields { grid-template-columns: 1fr; }
   .hardware-portability { grid-template-columns: 1fr; align-items: start; }
   .hardware-current, .hardware-targets { flex-wrap: wrap; }
   .bakeoff-flow { flex-wrap: wrap; justify-content: center; }
