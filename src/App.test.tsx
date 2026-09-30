@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
+import { demoConfig } from './demo.config'
 
 describe('presentation controls', () => {
   beforeEach(() => window.history.replaceState(null, '', '/'))
@@ -15,7 +16,7 @@ describe('presentation controls', () => {
   it('supports deep links', () => {
     window.history.replaceState(null, '', '/?act=1&scene=0')
     render(<App />)
-    expect(screen.getByText('One application contract. Three policies. Observable evidence.')).toBeInTheDocument()
+    expect(screen.getByText(demoConfig.acts[1].scenes[0].title!)).toBeInTheDocument()
   })
 
   it('restarts from the brand control', () => {

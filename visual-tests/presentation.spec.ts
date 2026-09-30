@@ -14,7 +14,7 @@ test('live journey opens as a workload workspace with topology on demand', async
 
 test('resolution separates constants, differences, and decision in one viewport', async ({ page }) => {
   await page.goto('/?act=2&scene=1')
-  await expect(page.getByRole('heading', { name: 'Same task. Different placement.' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Three policies ran the same case. Here is what changed.' })).toBeVisible()
   await expect(page.getByText('HELD CONSTANT')).toBeVisible()
   await expect(page.getByText('WHAT THE RESULT MEANS')).toBeVisible()
   const viewport = page.viewportSize()
