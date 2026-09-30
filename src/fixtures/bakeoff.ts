@@ -1,7 +1,24 @@
-import type { BakeoffResponse } from '../scenes/BakeoffLive'
+import type { BakeoffCatalog, BakeoffResponse } from '../scenes/BakeoffLive'
+
+export const catalogFixture: BakeoffCatalog = {
+  verticals: [
+    { id: 'healthcare', label: 'Healthcare', description: 'Clinical document triage with medication evidence and a physician handoff.', cases: [{ id: 'discharge-stemi-001', title: 'Cardiac discharge summary with medication interaction context' }] },
+    { id: 'financial_services', label: 'Financial Services', description: 'Transaction alert triage with customer risk, regulatory, and sanctions evidence.', cases: [{ id: 'wire-alert-001', title: 'High-value international wire with a new beneficiary' }] },
+  ],
+  cpu_models: [
+    { id: 'qwen25-3b-cpu', label: 'Qwen 2.5 3B Instruct · Xeon', provider: 'Intel Xeon CPU', runtime: 'Red Hat AI Inference vLLM CPU runtime', available: true },
+    { id: 'redhataillama-31-8b-instruct', label: 'Llama 3.1 8B Instruct · Xeon', provider: 'Intel Xeon CPU', runtime: 'Red Hat AI Inference vLLM CPU runtime', available: true },
+    { id: 'redhataigemma-4-26b-a4b-it-sml', label: 'Gemma 4 26B A4B · Xeon', provider: 'Intel Xeon CPU', runtime: 'Red Hat AI Inference vLLM CPU runtime', available: true },
+  ],
+  accelerator_models: [
+    { id: 'gaudi-llama-31-8b', label: 'Llama 3.1 8B · Gaudi 3', provider: 'Intel Gaudi 3', runtime: 'Red Hat AI Inference vLLM Gaudi runtime', available: true },
+    { id: 'gaudi-granite-31-8b', label: 'Granite 3.1 8B LAB · Gaudi 3', provider: 'Intel Gaudi 3', runtime: 'Red Hat AI Inference vLLM Gaudi runtime', available: true },
+  ],
+}
 
 export const bakeoffFixture: BakeoffResponse = {
   sourceState: 'rehearsal',
+  vertical: 'healthcare',
   case_id: 'discharge-stemi-001',
   case_title: 'Cardiac discharge summary with medication interaction context',
   collected_at: '2026-09-30T12:00:00Z',
@@ -12,9 +29,9 @@ export const bakeoffFixture: BakeoffResponse = {
       modeled_cost: { cost_per_task_usd: 0, cost_per_1000_tasks_usd: 0 },
       evaluation: { score_pct: 92, threshold_pct: 80, passed: true, scope: 'This checked-in eval case only' },
       result: {
-        classification: 'discharge_summary', total_ms: 9200,
+        classification: 'discharge_summary', execution_ms: 9200, routing_ms: 0, total_ms: 9200,
         entities: [{ text: 'Metformin', type: 'medication' }, { text: 'Lisinopril', type: 'medication' }, { text: 'Aspirin', type: 'medication' }, { text: 'Clopidogrel', type: 'medication' }, { text: 'STEMI', type: 'condition' }],
-        drug_interactions: [{ drug_a: 'Aspirin', drug_b: 'Clopidogrel', severity: 'moderate' }],
+        tool_evidence: [{ tool: 'drug_interaction_check', result: { interactions: [{ drug_a: 'Aspirin', drug_b: 'Clopidogrel', severity: 'moderate' }] } }],
         summary: 'The patient was treated for STEMI with PCI to the RCA and discharged on dual antiplatelet therapy with Aspirin and Clopidogrel. Monitor bleeding risk and renal function.',
         inference_log: [
           { node: 'classify', model: 'qwen25-3b-cpu', accelerator: 'cpu', hardware_provider: 'Intel Xeon or AMD EPYC — declared', latency_ms: 780, route: 'forced_cpu', prompt: 'Classify this clinical document into exactly one category…', output: 'discharge_summary', source_state: 'live' },
@@ -28,9 +45,9 @@ export const bakeoffFixture: BakeoffResponse = {
       modeled_cost: { cost_per_task_usd: 0.028, cost_per_1000_tasks_usd: 28 },
       evaluation: { score_pct: 96, threshold_pct: 80, passed: true, scope: 'This checked-in eval case only' },
       result: {
-        classification: 'discharge_summary', total_ms: 2800,
+        classification: 'discharge_summary', execution_ms: 2800, routing_ms: 0, total_ms: 2800,
         entities: [{ text: 'Metformin', type: 'medication' }, { text: 'Lisinopril', type: 'medication' }, { text: 'Aspirin', type: 'medication' }, { text: 'Clopidogrel', type: 'medication' }, { text: 'STEMI', type: 'condition' }, { text: 'PCI', type: 'procedure' }],
-        drug_interactions: [{ drug_a: 'Aspirin', drug_b: 'Clopidogrel', severity: 'moderate' }],
+        tool_evidence: [{ tool: 'drug_interaction_check', result: { interactions: [{ drug_a: 'Aspirin', drug_b: 'Clopidogrel', severity: 'moderate' }] } }],
         summary: 'Following STEMI, the patient underwent RCA PCI and is discharged on Aspirin and Clopidogrel. Continue diabetes and hypertension therapy while monitoring bleeding and CKD-related renal risk.',
         inference_log: [
           { node: 'classify', model: 'granite-8b', accelerator: 'gpu', hardware_provider: 'Intel Gaudi 3 — declared · Technology Preview', latency_ms: 420, route: 'forced_gpu', prompt: 'Classify this clinical document into exactly one category…', output: 'discharge_summary', source_state: 'live' },
@@ -44,9 +61,9 @@ export const bakeoffFixture: BakeoffResponse = {
       modeled_cost: { cost_per_task_usd: 0.012, cost_per_1000_tasks_usd: 12 },
       evaluation: { score_pct: 96, threshold_pct: 80, passed: true, scope: 'This checked-in eval case only' },
       result: {
-        classification: 'discharge_summary', total_ms: 4300,
+        classification: 'discharge_summary', execution_ms: 4300, routing_ms: 0, total_ms: 4300,
         entities: [{ text: 'Metformin', type: 'medication' }, { text: 'Lisinopril', type: 'medication' }, { text: 'Aspirin', type: 'medication' }, { text: 'Clopidogrel', type: 'medication' }, { text: 'STEMI', type: 'condition' }, { text: 'PCI', type: 'procedure' }],
-        drug_interactions: [{ drug_a: 'Aspirin', drug_b: 'Clopidogrel', severity: 'moderate' }],
+        tool_evidence: [{ tool: 'drug_interaction_check', result: { interactions: [{ drug_a: 'Aspirin', drug_b: 'Clopidogrel', severity: 'moderate' }] } }],
         summary: 'Following STEMI, the patient underwent RCA PCI and is discharged on Aspirin and Clopidogrel. Continue chronic therapy and monitor bleeding and renal function.',
         inference_log: [
           { node: 'classify', model: 'qwen25-3b-cpu', accelerator: 'cpu', hardware_provider: 'Intel Xeon or AMD EPYC — declared', latency_ms: 760, route: 'simple', prompt: 'Classify this clinical document into exactly one category…', output: 'discharge_summary', source_state: 'live' },
@@ -56,4 +73,33 @@ export const bakeoffFixture: BakeoffResponse = {
       },
     },
   ],
+}
+
+const financialFixture: BakeoffResponse = {
+  ...bakeoffFixture,
+  vertical: 'financial_services',
+  case_id: 'wire-alert-001',
+  case_title: 'High-value international wire with a new beneficiary',
+  runs: bakeoffFixture.runs.map((run) => ({
+    ...run,
+    result: run.result && {
+      ...run.result,
+      classification: 'high_value_wire_alert',
+      entities: [
+        { text: 'C-1842', type: 'customer_id' }, { text: 'TX-94721', type: 'transaction_id' },
+        { text: '$48,750', type: 'amount' }, { text: 'Northstar Trading', type: 'beneficiary' }, { text: 'Estonia', type: 'country' },
+      ],
+      tool_evidence: [
+        { tool: 'risk_profile_lookup', result: { risk_level: 'low' } },
+        { tool: 'regulatory_rule_check', result: { regulation: 'aml', status: 'pass' } },
+        { tool: 'sanction_list_search', result: { screened: true, matches: [] } },
+      ],
+      summary: 'Review the $48,750 wire to Northstar Trading in Estonia. The customer profile is low risk and screening returned no match, but the new international beneficiary and amount require human review.',
+    },
+  })),
+}
+
+export const bakeoffFixtures: Record<string, BakeoffResponse> = {
+  healthcare: bakeoffFixture,
+  financial_services: financialFixture,
 }

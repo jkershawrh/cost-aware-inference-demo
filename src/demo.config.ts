@@ -3,7 +3,7 @@ import { BakeoffLive } from './scenes/BakeoffLive'
 
 const technicalTopology = {
   boundary: { label: 'Red Hat OpenShift AI', detail: 'one governed application and inference boundary' },
-  entry: { id: 'case', kind: 'workload', label: 'Healthcare case', detail: 'one fixed discharge summary and acceptance rule' },
+  entry: { id: 'case', kind: 'workload', label: 'Industry case', detail: 'one selected vertical, case, and acceptance rule' },
   primaryPath: [
     { id: 'api', kind: 'service', label: 'Proof API', detail: 'runs three policies concurrently', endpoint: 'POST /api/v1/bakeoff', edgeLabel: 'HTTPS' },
     { id: 'router', kind: 'policy', label: 'Cost-aware router', detail: 'step, confidence, schema, and quality policy', edgeLabel: 'classify step' },
@@ -11,7 +11,7 @@ const technicalTopology = {
     { id: 'compute', kind: 'compute', label: 'CPU + accelerator tiers', detail: 'Live: Intel Xeon + Gaudi 3 · Portable: supported Intel, AMD, NVIDIA targets', edgeLabel: 'execute' },
   ],
   supportPath: [
-    { id: 'mcp', kind: 'tool', label: 'MCP evidence', detail: 'bounded drug-interaction lookup', edgeLabel: 'ground' },
+    { id: 'mcp', kind: 'tool', label: 'MCP evidence', detail: 'bounded domain-specific tool lookups', edgeLabel: 'ground' },
     { id: 'eval', kind: 'policy', label: 'Eval + cost model', detail: 'case score, latency, and visible hourly assumptions', edgeLabel: 'measure' },
     { id: 'decision', kind: 'authority', label: 'Human decision', detail: 'choose placement; no automated clinical decision', edgeLabel: 'review' },
   ],
@@ -20,7 +20,7 @@ const technicalTopology = {
 export const demoConfig: DemoConfig = {
   id: 'cost-aware-inference-demo',
   title: 'Every step on the right compute',
-  subtitle: 'A cost-aware healthcare inference bake-off on Red Hat AI',
+  subtitle: 'A cross-industry, cost-aware inference bake-off on Red Hat AI',
   event: 'Customer briefing',
   audience: 'AI platform, application, and business leaders',
   cta: 'Prove the placement decision with your workload.',
@@ -32,9 +32,9 @@ export const demoConfig: DemoConfig = {
     ] },
     { id: 'architecture', label: '02', title: 'Guided Architecture', scenes: [
       { id: 'guided-architecture', type: 'guided-architecture', beat: 'system-reveal', eyebrow: 'Guided system design', title: 'One application contract. Three policies. Observable evidence.', body: 'Answer one architectural question at a time, then reveal the runtime object that owns it.', technicalTopology, layers: [
-        { id: 'workload', component: 'Fixed workload', tone: 'primary', question: 'How do we make the comparison fair?', answer: 'The same case, prompts, tools, and acceptance rule enter all three lanes.', detail: 'The healthcare pipeline is classify → extract → MCP evidence → summarize.', activeNodeIds: ['case', 'api'] },
+        { id: 'workload', component: 'Fixed workload', tone: 'primary', question: 'How do we make the comparison fair?', answer: 'The same selected case, models, prompts, tools, and acceptance rule enter all three lanes.', detail: 'Healthcare and Financial Services both follow classify → extract → MCP evidence → summarize, with domain-specific prompts, tools, and evals.', activeNodeIds: ['case', 'api'] },
         { id: 'placement', component: 'Placement policy', tone: 'success', question: 'Who decides where each call runs?', answer: 'A policy routes by step complexity and fails closed when a required tier is unavailable.', detail: 'CPU-only and accelerator-only are controls. Heterogeneous placement is the policy under test.', activeNodeIds: ['router'] },
-        { id: 'runtime', component: 'Inference contract', tone: 'primary', question: 'Does the application change when compute changes?', answer: 'No. Red Hat AI Inference exposes one OpenAI-compatible API across supported runtimes.', detail: 'The router changes the endpoint and model—not the healthcare application contract.', activeNodeIds: ['inference'] },
+        { id: 'runtime', component: 'Inference contract', tone: 'primary', question: 'Does the application change when compute changes?', answer: 'No. Red Hat AI Inference exposes one OpenAI-compatible API across supported runtimes.', detail: 'The selected workload stays fixed while the endpoint and model placement change.', activeNodeIds: ['inference'] },
         { id: 'hardware', component: 'Compute options', tone: 'partner', question: 'What hardware is this using—and what can move?', answer: 'This live run uses Intel Xeon CPU and Intel Gaudi 3. The Red Hat inference contract also supports defined Intel or AMD CPU and NVIDIA or AMD GPU targets.', detail: 'Every result declares model, runtime, provider, route, and source state. Support levels vary; Intel Gaudi 3 is identified as Technology Preview in this Red Hat AI release.', activeNodeIds: ['compute'] },
         { id: 'evidence', component: 'Evidence + evaluation', tone: 'success', question: 'How do we know the cheaper route is still acceptable?', answer: 'The system preserves MCP evidence, scores the named case, and prices measured execution time using visible assumptions.', detail: 'Quality claims apply only to this eval case. Costs are modeled—not quotes.', activeNodeIds: ['mcp', 'eval', 'decision'] },
       ], speakerPrompt: 'Pause at each question. Tie every box to fairness, placement, portability, or proof.' },

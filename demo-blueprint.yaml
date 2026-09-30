@@ -1,7 +1,7 @@
 version: 1
 status: reviewed
 source:
-  name: cost-aware healthcare inference from Triforce patterns
+  name: cross-industry cost-aware inference from Triforce patterns
   kind: repository-and-design-brief
   location: /Users/jkershaw/Documents/cost-aware-inference-demo
   revision: working-tree
@@ -23,14 +23,14 @@ source:
 
 intent:
   primary_user: Enterprise AI platform leaders, architects, and application owners
-  workload: One healthcare document analysis task executed under CPU-only, accelerator-only, and heterogeneous routing policies
+  workload: One selected Healthcare or Financial Services case executed under CPU-only, accelerator-only, and heterogeneous routing policies with selected live models
   recognized_problem: Teams compare hardware with tokens per second while agentic applications pay for completed multi-step tasks.
   audience_decision: Decide whether a measured heterogeneous policy can meet the workload quality threshold at a lower modeled cost than accelerator-only execution.
   desired_outcome: Approve a workload-specific proof on Red Hat AI Inference and OpenShift AI instead of standardizing every step on one compute tier.
 
 architecture:
   actors:
-    - {id: presenter, name: Presenter or platform owner, kind: human, responsibility: Chooses the eval case and visible cost assumptions, status: verified, source: src/scenes/BakeoffLive.tsx}
+    - {id: presenter, name: Presenter or platform owner, kind: human, responsibility: Chooses the vertical, eval case, live models, and visible cost assumptions, status: verified, source: src/scenes/BakeoffLive.tsx}
     - {id: reviewer, name: Workload owner, kind: human, responsibility: Reviews outputs and decides whether the policy meets the acceptance threshold, status: verified, source: story.brief.yaml}
   runtime_objects:
     - {id: web, name: Presentation web application, kind: deployment, responsibility: Runs the story and renders current-session evidence, status: verified, source: src/App.tsx}
@@ -38,7 +38,7 @@ architecture:
     - {id: semantic-router, name: Semantic router, kind: deployment, responsibility: Classifies each inference step and selects the configured tier, status: verified, source: services/proof-api/pipeline.py}
     - {id: cpu-endpoint, name: Red Hat AI Inference CPU endpoint, kind: model-endpoint, responsibility: Serves short structured work through the OpenAI-compatible contract, status: verified, source: services/proof-api/pipeline.py}
     - {id: accelerator-endpoint, name: Red Hat AI Inference accelerator endpoint, kind: model-endpoint, responsibility: Serves the configured larger model through the same contract, status: verified, source: services/proof-api/pipeline.py}
-    - {id: mcp, name: Healthcare MCP tool, kind: mcp, responsibility: Checks medication interactions using deterministic evidence, status: verified, source: services/proof-api/pipeline.py}
+    - {id: mcp, name: Domain MCP tools, kind: mcp, responsibility: Supplies medication evidence or financial risk regulatory and sanctions evidence, status: verified, source: services/proof-api/pipeline.py}
     - {id: evaluator, name: Deterministic eval scorer, kind: policy, responsibility: Scores only the named case and threshold, status: verified, source: services/proof-api/evaluation.py}
     - {id: cost-model, name: Transparent cost model, kind: policy, responsibility: Applies displayed hourly assumptions to measured accelerator time, status: verified, source: services/proof-api/evaluation.py}
   boundaries:
@@ -52,7 +52,7 @@ architecture:
     - id: policy-bakeoff
       name: One case through three compute policies
       kind: request
-      trigger: Presenter runs the checked-in healthcare case.
+      trigger: Presenter selects a vertical, case, CPU model, and accelerator model, then starts the bake-off.
       outcome: Three independently sourced outputs, latencies, eval scores, and modeled costs are returned together.
       edges:
         - {from: presenter, to: web, purpose: Select case and visible assumptions, protocol: browser event, evidence_ids: [request-assumptions]}
@@ -64,11 +64,11 @@ architecture:
         - {from: proof-api, to: evaluator, purpose: Score the named case, protocol: in-process deterministic evaluation, evidence_ids: [eval-score]}
         - {from: proof-api, to: cost-model, purpose: Apply displayed assumptions to measured time, protocol: in-process calculation, evidence_ids: [modeled-cost]}
         - {from: web, to: reviewer, purpose: Show responses and decision boundary, protocol: visual review, evidence_ids: [bakeoff-response, eval-score, modeled-cost]}
-    - id: healthcare-agent-loop
-      name: Clinical document analysis
+    - id: industry-agent-loop
+      name: Domain-specific agent workload
       kind: data
-      trigger: A checked-in discharge summary enters a policy lane.
-      outcome: Classification, entities, interaction evidence, and physician handoff summary.
+      trigger: A checked-in healthcare or financial-services case enters a policy lane.
+      outcome: Classification, extracted facts, domain MCP evidence, and a bounded professional summary.
       edges:
         - {from: proof-api, to: cpu-endpoint, purpose: Classify or extract when policy selects CPU, protocol: OpenAI-compatible API, evidence_ids: [step-logs]}
         - {from: proof-api, to: accelerator-endpoint, purpose: Execute any step selected for acceleration, protocol: OpenAI-compatible API, evidence_ids: [step-logs]}
@@ -78,17 +78,17 @@ operational_pattern:
   name: Measure, route, qualify, decide
   rationale: The audience must see the same business task, not isolated token benchmarks, survive a policy change.
   steps:
-    - {id: frame, label: Frame the task, question: What constitutes one completed healthcare task?, flow_ids: [healthcare-agent-loop], evidence_ids: [eval-case]}
+    - {id: frame, label: Frame the task, question: What constitutes one completed industry task?, flow_ids: [industry-agent-loop], evidence_ids: [eval-case]}
     - {id: reveal, label: Reveal the decision architecture, question: Which boundary lets placement change without changing the app?, flow_ids: [policy-bakeoff], evidence_ids: [api-contract]}
     - {id: run, label: Run three policies, question: What happened under CPU-only, accelerator-only, and heterogeneous execution?, flow_ids: [policy-bakeoff], evidence_ids: [bakeoff-response, route-decisions, step-logs]}
-    - {id: inspect, label: Inspect outputs, question: Did each policy preserve the required case facts?, flow_ids: [healthcare-agent-loop], evidence_ids: [eval-score, mcp-source]}
+    - {id: inspect, label: Inspect outputs, question: Did each policy preserve the required case facts?, flow_ids: [industry-agent-loop], evidence_ids: [eval-score, mcp-source]}
     - {id: model-cost, label: Change the assumptions, question: Where does the break-even point move?, flow_ids: [policy-bakeoff], evidence_ids: [request-assumptions, modeled-cost]}
     - {id: decide, label: Choose the workload policy, question: Which policy passes quality at an acceptable cost and latency?, flow_ids: [policy-bakeoff], evidence_ids: [eval-score, modeled-cost]}
   changed_condition: Toggle CPU from already provisioned to dedicated and change the accelerator hourly assumption without rerouting or changing application code.
   close: Select one real workload and run the same measured bake-off on the target Red Hat AI platform.
 
 evidence:
-  - {id: eval-case, name: Checked-in healthcare acceptance case, source: services/proof-api/eval_cases.json, collection: versioned fixture, supports: Defines expected classification entities interaction and summary facts, status: verified}
+  - {id: eval-case, name: Checked-in vertical acceptance cases, source: services/proof-api/eval_cases.json, collection: versioned fixtures, supports: Defines vertical-specific classification facts MCP evidence and summary requirements, status: verified}
   - {id: request-assumptions, name: Visible cost assumptions, source: presenter controls, collection: request payload, supports: Makes the cost model reproducible and challengeable, status: verified}
   - {id: api-contract, name: Common endpoint contract, source: services/proof-api/pipeline.py, collection: implementation review, supports: CPU and accelerator calls use the same OpenAI-compatible shape, status: verified}
   - {id: route-decisions, name: Per-step routing decisions, source: semantic router response, collection: current-session API response, supports: Shows which step selected which tier and why, status: verified}
@@ -126,12 +126,12 @@ ai_assessment:
   final_decision_owner: Human workload owner
 
 story_mapping:
-  audience_question: Which compute policy completes this healthcare task at acceptable quality latency and modeled cost?
+  audience_question: Which selected model and compute policy completes this industry task at acceptable quality latency and modeled cost?
   stakes:
     - Agentic applications multiply model calls so placement choices repeat across every completed task.
     - Standardizing every step on an accelerator can spend premium capacity on short structured work.
     - Standardizing every step on CPU can miss latency or quality requirements for harder synthesis.
-  architecture_flow_ids: [policy-bakeoff, healthcare-agent-loop]
+  architecture_flow_ids: [policy-bakeoff, industry-agent-loop]
   live_proof_flow_ids: [policy-bakeoff]
   comparison: CPU-only versus accelerator-only versus heterogeneous with the same case and acceptance threshold.
   payoff: One application contract multiple Red Hat AI Inference targets and a workload policy chosen from current-session evidence.

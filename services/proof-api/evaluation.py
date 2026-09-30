@@ -22,23 +22,21 @@ def evaluate(case_id: str, result: PipelineResult, threshold_pct: float) -> Eval
         detail=f"expected {expected['classification']}; received {result.classification}",
     ))
 
-    actual_entities = {entity.text.casefold() for entity in result.entities}
-    expected_entities = {entity.casefold() for entity in expected["entities"]}
+    normalize = lambda value: "".join(character for character in value.casefold() if character.isalnum())
+    actual_entities = {normalize(entity.text) for entity in result.entities}
+    expected_entities = {normalize(entity) for entity in expected["entities"]}
     entity_hits = sum(1 for entity in expected_entities if any(entity in actual or actual in entity for actual in actual_entities))
     components.append(EvalComponent(
         name="entity recall", earned=round(30 * entity_hits / max(len(expected_entities), 1), 2), possible=30,
         detail=f"{entity_hits}/{len(expected_entities)} expected entities found",
     ))
 
-    actual_pairs = {
-        frozenset((str(item.get("drug_a", "")).casefold(), str(item.get("drug_b", "")).casefold()))
-        for item in result.drug_interactions
-    }
-    expected_pairs = {frozenset(drug.casefold() for drug in pair) for pair in expected["interaction_pairs"]}
-    pair_hits = len(actual_pairs & expected_pairs)
+    evidence_text = json.dumps(result.tool_evidence).casefold()
+    expected_terms = [term.casefold() for term in expected["evidence_terms"]]
+    evidence_hits = sum(1 for term in expected_terms if term in evidence_text)
     components.append(EvalComponent(
-        name="interaction evidence", earned=round(15 * pair_hits / max(len(expected_pairs), 1), 2), possible=15,
-        detail=f"{pair_hits}/{len(expected_pairs)} expected interaction pairs found",
+        name="tool evidence", earned=round(15 * evidence_hits / max(len(expected_terms), 1), 2), possible=15,
+        detail=f"{evidence_hits}/{len(expected_terms)} required evidence terms found",
     ))
 
     summary = result.summary.casefold()

@@ -57,6 +57,12 @@ metadata:
   name: proof-api-config
   namespace: cost-aware-inference-demo
 data:
+  DEFAULT_CPU_MODEL: qwen25-3b-cpu
+  DEFAULT_ACCELERATOR_MODEL: gaudi-llama-31-8b
+  CPU_MODEL_ENDPOINTS_JSON: >-
+    {"qwen25-3b-cpu":{"label":"Qwen 2.5 3B Instruct · Xeon","base_url":"http://qwen25-3b-cpu-predictor:8080","provider":"Intel Xeon CPU (declared by the OpenShift AI hardware profile)","runtime":"Red Hat AI Inference vLLM CPU runtime"},"redhataillama-31-8b-instruct":{"label":"Llama 3.1 8B Instruct · Xeon","base_url":"https://redhataillama-31-8b-instruct-rhxintel-loan.apps.rhgaudi3s2.fm2aihpcsed.com","provider":"Intel Xeon CPU (declared by the OpenShift AI hardware profile)","runtime":"Red Hat AI Inference vLLM CPU runtime"},"redhataigemma-4-26b-a4b-it-sml":{"label":"Gemma 4 26B A4B · Xeon","base_url":"https://redhataigemma-4-26b-a4b-it-sml-rhxintel-loan.apps.rhgaudi3s2.fm2aihpcsed.com","provider":"Intel Xeon CPU (declared by the OpenShift AI hardware profile)","runtime":"Red Hat AI Inference vLLM CPU runtime"}}
+  ACCELERATOR_MODEL_ENDPOINTS_JSON: >-
+    {"gaudi-llama-31-8b":{"label":"Llama 3.1 8B · Gaudi 3","base_url":"http://gaudi-llama-31-8b-predictor:8080","provider":"Intel Gaudi 3 accelerator (observed by OpenShift device allocation)","runtime":"Red Hat AI Inference vLLM Gaudi runtime"},"gaudi-granite-31-8b":{"label":"Granite 3.1 8B LAB · Gaudi 3","base_url":"http://gaudi-granite-31-8b-predictor:8080","provider":"Intel Gaudi 3 accelerator (observed by OpenShift device allocation)","runtime":"Red Hat AI Inference vLLM Gaudi runtime"}}
   CPU_API_BASE: https://redhataillama-31-8b-instruct-rhxintel-loan.apps.rhgaudi3s2.fm2aihpcsed.com
   CPU_CLASSIFY_MODEL: redhataillama-31-8b-instruct
   CPU_NER_MODEL: redhataillama-31-8b-instruct
@@ -195,6 +201,67 @@ spec:
 apiVersion: serving.kserve.io/v1alpha1
 kind: ServingRuntime
 metadata:
+  name: vllm-cpu-runtime
+  namespace: cost-aware-inference-demo
+  annotations:
+    opendatahub.io/runtime-version: v0.24.0
+    openshift.io/display-name: vLLM CPU ServingRuntime for KServe
+  labels:
+    opendatahub.io/dashboard: "true"
+spec:
+  annotations:
+    opendatahub.io/kserve-runtime: vllm
+    prometheus.io/path: /metrics
+    prometheus.io/port: "8080"
+  containers:
+    - name: kserve-container
+      image: registry.redhat.io/rhaii/vllm-cpu-rhel9@sha256:578e9946e60a14596185937f6a083c1d42f3cff343b18648090b9ac80691d2e0
+      command: [python, -m, vllm.entrypoints.openai.api_server]
+      args: [--port=8080, --model=/mnt/models, '--served-model-name={{.Name}}']
+      env:
+        - { name: HF_HOME, value: /tmp/hf_home }
+      ports:
+        - { containerPort: 8080, protocol: TCP }
+  multiModel: false
+  supportedModelFormats:
+    - { name: vLLM, autoSelect: false }
+---
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: qwen25-3b-cpu
+  namespace: cost-aware-inference-demo
+  annotations:
+    openshift.io/display-name: Qwen 2.5 3B Instruct CPU
+    opendatahub.io/hardware-profile-name: xeon-small
+    opendatahub.io/hardware-profile-namespace: redhat-ods-applications
+    opendatahub.io/model-type: generative
+    security.opendatahub.io/enable-auth: "false"
+    serving.kserve.io/deploymentMode: Standard
+spec:
+  predictor:
+    minReplicas: 1
+    maxReplicas: 1
+    model:
+      modelFormat: { name: vLLM }
+      runtime: vllm-cpu-runtime
+      storageUri: hf://Qwen/Qwen2.5-3B-Instruct
+      args: [--dtype=bfloat16, --enforce-eager, --enable-prefix-caching, --max-model-len=4096, --max-num-seqs=16]
+      env:
+        - { name: VLLM_CPU_KVCACHE_SPACE, value: "8" }
+        - { name: VLLM_CPU_NUM_OF_RESERVED_CPU, value: "1" }
+      resources:
+        requests: { cpu: "32", memory: 64Gi }
+        limits: { cpu: "32", memory: 64Gi }
+      volumeMounts:
+        - { name: shm, mountPath: /dev/shm }
+    volumes:
+      - name: shm
+        emptyDir: { medium: Memory, sizeLimit: 8Gi }
+---
+apiVersion: serving.kserve.io/v1alpha1
+kind: ServingRuntime
+metadata:
   name: vllm-gaudi-runtime
   namespace: cost-aware-inference-demo
   annotations:
@@ -243,6 +310,39 @@ spec:
       modelFormat: { name: vLLM }
       runtime: vllm-gaudi-runtime
       storageUri: oci://registry.redhat.io/rhelai1/modelcar-llama-3-1-8b-instruct:1.5
+      args: [--dtype=bfloat16, --max-model-len=4096, --max-num-seqs=16]
+      resources:
+        requests: { cpu: "8", memory: 32Gi, habana.ai/gaudi: "1" }
+        limits: { cpu: "16", memory: 64Gi, habana.ai/gaudi: "1" }
+      volumeMounts:
+        - { name: shm, mountPath: /dev/shm }
+        - { name: habana-logs, mountPath: /var/log/habana_logs }
+    volumes:
+      - name: shm
+        emptyDir: { medium: Memory, sizeLimit: 8Gi }
+      - name: habana-logs
+        emptyDir: {}
+---
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: gaudi-granite-31-8b
+  namespace: cost-aware-inference-demo
+  annotations:
+    openshift.io/display-name: Gaudi Granite 3.1 8B LAB
+    opendatahub.io/hardware-profile-name: intel-gaudi
+    opendatahub.io/hardware-profile-namespace: redhat-ods-applications
+    opendatahub.io/model-type: generative
+    security.opendatahub.io/enable-auth: "false"
+    serving.kserve.io/deploymentMode: Standard
+spec:
+  predictor:
+    minReplicas: 1
+    maxReplicas: 1
+    model:
+      modelFormat: { name: vLLM }
+      runtime: vllm-gaudi-runtime
+      storageUri: oci://registry.redhat.io/rhelai1/modelcar-granite-3-1-8b-lab-v2:1.5-1747378709
       args: [--dtype=bfloat16, --max-model-len=4096, --max-num-seqs=16]
       resources:
         requests: { cpu: "8", memory: 32Gi, habana.ai/gaudi: "1" }

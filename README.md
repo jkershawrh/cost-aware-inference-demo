@@ -1,8 +1,8 @@
 # Cost-Aware Inference Demo
 
-A standalone Triforce-style presentation and live healthcare bake-off for Red Hat AI. The same four-step workload runs under CPU-only, accelerator-only, and heterogeneous placement policies. The UI exposes latency, modeled cost, case-specific evaluation, routing decisions, prompts, responses, model identity, and declared hardware identity.
+A standalone Triforce-style presentation and live cross-industry bake-off for Red Hat AI. Select Healthcare or Financial Services plus the available CPU and accelerator models, then run the same four-step workload under CPU-only, accelerator-only, and heterogeneous placement policies. The selector changes the real endpoint, prompts, MCP tools, and case-specific evaluation—not just the label. The UI exposes execution and route-planning latency, modeled cost, evaluation, routing decisions, prompts, responses, model identity, and declared hardware identity.
 
-The three policies start concurrently and return progressively, so a completed lane is visible without waiting for the slowest one. The fixed semantic-routing plan is warmed and cached when the proof service starts; the live run still records the selected route while avoiding repeated embedding startup cost.
+The three policies start concurrently and return progressively, so a completed lane is visible without waiting for the slowest one. Each vertical's semantic-routing plan is warmed and cached when the proof service starts; an uncached planning cost is reported separately from model execution rather than hidden inside task latency.
 
 This project does not replace or modify Triforce. Triforce is the presentation and evidence-pattern reference.
 

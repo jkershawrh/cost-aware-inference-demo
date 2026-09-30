@@ -23,11 +23,11 @@ source_material:
 architecture:
   actors: [Presenter, Workload owner]
   boundaries: [OpenShift namespace, OpenAI-compatible API, eval acceptance threshold]
-  critical_flows: [policy-bakeoff, healthcare-agent-loop]
+  critical_flows: [policy-bakeoff, industry-agent-loop]
   omitted_from_main_story:
     - PostgreSQL audit storage
     - Kafka event transport
-    - unrelated Triforce verticals and modules
+    - unrelated Triforce modules and verticals without a live tool-and-eval contract
     - supplier list prices
 
 beats:
@@ -36,7 +36,7 @@ beats:
   - {beat: root-cause, claim: Tokens per second does not tell the application owner the cost of an accepted completed task.}
   - {beat: reframe, claim: Route each step to the least-cost Red Hat AI Inference tier that meets its workload threshold.}
   - {beat: system-reveal, claim: One OpenAI-compatible application contract fronts CPU and accelerator targets; the policy changes placement not application code.}
-  - {beat: live-proof, claim: The same healthcare case runs concurrently as CPU-only accelerator-only and heterogeneous.}
+  - {beat: live-proof, claim: The selected healthcare or financial-services case runs concurrently as CPU-only accelerator-only and heterogeneous using the selected live models.}
   - {beat: trials, claim: A policy wins only if the returned output passes the named eval threshold under visible cost assumptions.}
   - {beat: transformation, claim: The platform decision moves from buying one tier to placing each step with evidence.}
   - {beat: next-journey, claim: Repeat the bake-off with the customer's workload models traffic and rates.}
@@ -83,6 +83,5 @@ journey:
   hands_on_lab: Add a workload case tune routing thresholds run load tests and produce a reviewable placement recommendation
 
 open_questions:
-  - Which CPU endpoint and model are already running on rhgaudi3s2?
-  - Which Gaudi model endpoint is available and what support-state label must be displayed?
-  - Is the healthcare MCP gateway deployed on the test cluster or should the first run visibly use rehearsal interaction evidence?
+  - Which additional accelerator models should be deployed before expanding the currently single-option accelerator selector?
+  - Which additional vertical should be admitted after its real MCP tools and case-specific eval contract are implemented?

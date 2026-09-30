@@ -1,12 +1,24 @@
 {
   "discharge-stemi-001": {
+    "vertical": "healthcare",
     "title": "Cardiac discharge summary with medication interaction context",
     "text": "DISCHARGE SUMMARY: 72-year-old male with Type 2 Diabetes on Metformin 500mg and Lisinopril 10mg. Recent STEMI with PCI to RCA. Started on Aspirin 81mg and Clopidogrel 75mg. History of hypertension and CKD stage 3.",
     "expected": {
       "classification": "discharge_summary",
       "entities": ["Type 2 Diabetes", "Metformin", "Lisinopril", "STEMI", "PCI", "Aspirin", "Clopidogrel", "hypertension", "CKD"],
-      "interaction_pairs": [["Aspirin", "Clopidogrel"]],
+      "evidence_terms": ["aspirin", "clopidogrel"],
       "summary_concepts": ["STEMI", "PCI", "Aspirin", "Clopidogrel"]
+    }
+  },
+  "wire-alert-001": {
+    "vertical": "financial_services",
+    "title": "High-value international wire with a new beneficiary",
+    "text": "TRANSACTION ALERT: Customer C-1842 initiated a $48,750 wire transfer to Northstar Trading in Estonia. This is a new beneficiary and the customer's first international wire. The login originated in Chicago from a recognized device. The account is 8 years old and the prior maximum wire was $6,200. Transaction ID TX-94721.",
+    "expected": {
+      "classification": "high_value_wire_alert",
+      "entities": ["C-1842", "48,750", "Northstar Trading", "Estonia", "TX-94721"],
+      "evidence_terms": ["risk_level", "regulation", "screened"],
+      "summary_concepts": ["Northstar Trading", "Estonia", "review", "48,750"]
     }
   }
 }

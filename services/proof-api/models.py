@@ -17,7 +17,10 @@ class CostAssumptions(BaseModel):
 
 
 class BakeoffRequest(BaseModel):
+    vertical: Literal["healthcare", "financial_services"] = "healthcare"
     case_id: str = "discharge-stemi-001"
+    cpu_model: Optional[str] = None
+    accelerator_model: Optional[str] = None
     policies: list[ExecutionPolicy] = Field(default_factory=lambda: list(ExecutionPolicy))
     quality_threshold_pct: float = Field(80, ge=0, le=100)
     cost_assumptions: CostAssumptions
@@ -50,9 +53,11 @@ class StepLog(BaseModel):
 class PipelineResult(BaseModel):
     classification: str
     entities: list[Entity]
-    drug_interactions: list[dict]
+    tool_evidence: list[dict]
     summary: str
     inference_log: list[StepLog]
+    execution_ms: int = Field(ge=0)
+    routing_ms: int = Field(ge=0)
     total_ms: int = Field(ge=0)
 
 
@@ -90,8 +95,36 @@ class PolicyRun(BaseModel):
 
 
 class BakeoffResponse(BaseModel):
+    vertical: str
     case_id: str
     case_title: str
     collected_at: str
     policies_run: int = Field(ge=1)
     runs: list[PolicyRun]
+
+
+class ModelOption(BaseModel):
+    id: str
+    label: str
+    hardware: Literal["cpu", "gpu"]
+    provider: str
+    runtime: str
+    available: bool = True
+
+
+class CaseOption(BaseModel):
+    id: str
+    title: str
+
+
+class VerticalOption(BaseModel):
+    id: Literal["healthcare", "financial_services"]
+    label: str
+    description: str
+    cases: list[CaseOption]
+
+
+class CatalogResponse(BaseModel):
+    verticals: list[VerticalOption]
+    cpu_models: list[ModelOption]
+    accelerator_models: list[ModelOption]

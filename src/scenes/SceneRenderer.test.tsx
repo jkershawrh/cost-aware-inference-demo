@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { demoConfig } from '../demo.config'
-import { bakeoffFixture } from '../fixtures/bakeoff'
+import { bakeoffFixture, catalogFixture } from '../fixtures/bakeoff'
 import '../live/demoAdapter'
 import type { SceneConfig } from '../types'
 import { SceneRenderer } from './SceneRenderer'
@@ -57,7 +57,8 @@ describe('SceneRenderer', () => {
 
   it('requests every policy independently and reveals completed lanes progressively', async () => {
     const pending = new Map<string, (response: Response) => void>()
-    vi.stubGlobal('fetch', vi.fn((_url: string, init?: RequestInit) => {
+    vi.stubGlobal('fetch', vi.fn((url: string, init?: RequestInit) => {
+      if (url.includes('/catalog')) return Promise.resolve(new Response(JSON.stringify(catalogFixture), { status: 200, headers: { 'Content-Type': 'application/json' } }))
       const policy = JSON.parse(String(init?.body)).policies[0] as string
       return new Promise<Response>((resolve) => pending.set(policy, resolve))
     }))
@@ -65,13 +66,17 @@ describe('SceneRenderer', () => {
     render(<SceneRenderer scene={scene} brand={demoConfig.brand} />)
     fireEvent.click(screen.getByRole('button', { name: /run the bake-off/i }))
 
-    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(3))
-    for (const call of vi.mocked(fetch).mock.calls) {
-      expect(JSON.parse(String(call[1]?.body)).policies).toHaveLength(1)
+    await waitFor(() => expect(vi.mocked(fetch).mock.calls.filter((call) => call[1]?.method === 'POST')).toHaveLength(3))
+    for (const call of vi.mocked(fetch).mock.calls.filter((item) => item[1]?.method === 'POST')) {
+      const body = JSON.parse(String(call[1]?.body))
+      expect(body.policies).toHaveLength(1)
+      expect(body.vertical).toBe('healthcare')
+      expect(body.cpu_model).toBe('qwen25-3b-cpu')
+      expect(body.accelerator_model).toBe('gaudi-llama-31-8b')
     }
 
     const cpuRun = structuredClone(bakeoffFixture.runs.find((run) => run.policy === 'cpu_only')!)
-    cpuRun.result!.total_ms = 111
+    cpuRun.result!.execution_ms = 111
     await act(async () => pending.get('cpu_only')!(new Response(JSON.stringify({ ...bakeoffFixture, policies_run: 1, runs: [cpuRun] }), { status: 200, headers: { 'Content-Type': 'application/json' } })))
     expect(await screen.findByText('111ms')).toBeInTheDocument()
     expect(screen.getAllByText('running')).toHaveLength(2)
@@ -111,9 +116,9 @@ describe('SceneRenderer', () => {
     const scene = scenes.find((item) => item.type === 'guided-architecture')!
     render(<SceneRenderer scene={scene} brand={demoConfig.brand} />)
     expect(screen.getByText('How do we make the comparison fair?')).toBeInTheDocument()
-    expect(screen.queryByText('The same case, prompts, tools, and acceptance rule enter all three lanes.')).not.toBeInTheDocument()
+    expect(screen.queryByText('The same selected case, models, prompts, tools, and acceptance rule enter all three lanes.')).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Reveal technical boundary' }))
-    expect(await screen.findByText('The same case, prompts, tools, and acceptance rule enter all three lanes.')).toBeInTheDocument()
+    expect(await screen.findByText('The same selected case, models, prompts, tools, and acceptance rule enter all three lanes.')).toBeInTheDocument()
     expect(document.querySelector('[data-node="api"]')).toHaveClass('active')
     fireEvent.click(screen.getByRole('button', { name: 'Ask next question →' }))
     expect(await screen.findByText('Who decides where each call runs?')).toBeInTheDocument()
