@@ -1,7 +1,7 @@
 # Discovery review
 
-Source: `/Users/jkershaw/Documents/triforce`
-Destination: `/Users/jkershaw/Documents/cost-aware-inference-demo`
+Source: `repository://triforce`
+Destination: `repository://cost-aware-inference-demo`
 Blueprint status: **draft**
 
 ## Automated findings
@@ -28,7 +28,7 @@ These are discovery candidates, not approved presentation claims.
 Do not change `status: draft` until material findings are sourced. Then run:
 
 ```bash
-npm run validate:blueprint -- /Users/jkershaw/Documents/cost-aware-inference-demo/demo-blueprint.yaml
+npm run validate:blueprint -- ./demo-blueprint.yaml
 ```
 
 Validation requires a domain-specific operational step, a typed architecture flow, evidence, and resolved AI authority when AI is used.

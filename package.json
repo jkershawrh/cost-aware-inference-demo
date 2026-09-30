@@ -10,7 +10,8 @@
     "test:proof": "python3 -m pytest services/proof-api/tests -q",
     "test:visual": "playwright test",
     "verify:offline": "node scripts/verify-offline.mjs",
-    "check": "npm run test:proof && npm run test && npm run build && npm run verify:offline",
+    "check": "npm run check:public && npm run test:proof && npm run test && npm run build && npm run verify:offline",
+    "check:public": "node scripts/check-public-repo.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

@@ -33,4 +33,4 @@ Red Hat OpenShift AI and Red Hat AI Inference provide the deployment, serving, l
 
 ## OpenShift
 
-See `deploy/openshift/README.md`. The test profile targets the dedicated `cost-aware-inference-demo` namespace on `rhgaudi3s2` and keeps all credentials outside the repository.
+See `deploy/openshift/README.md`. The public profile targets a dedicated `cost-aware-inference-demo` namespace and keeps cluster identity, external routes, and credentials outside the repository.

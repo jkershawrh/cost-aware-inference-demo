@@ -60,16 +60,16 @@ data:
   DEFAULT_CPU_MODEL: qwen25-3b-cpu
   DEFAULT_ACCELERATOR_MODEL: gaudi-llama-31-8b
   CPU_MODEL_ENDPOINTS_JSON: >-
-    {"qwen25-3b-cpu":{"label":"Qwen 2.5 3B Instruct · Xeon","base_url":"http://qwen25-3b-cpu-predictor:8080","provider":"Intel Xeon CPU (declared by the OpenShift AI hardware profile)","runtime":"Red Hat AI Inference vLLM CPU runtime"},"redhataillama-31-8b-instruct":{"label":"Llama 3.1 8B Instruct · Xeon","base_url":"https://redhataillama-31-8b-instruct-rhxintel-loan.apps.rhgaudi3s2.fm2aihpcsed.com","provider":"Intel Xeon CPU (declared by the OpenShift AI hardware profile)","runtime":"Red Hat AI Inference vLLM CPU runtime"},"redhataigemma-4-26b-a4b-it-sml":{"label":"Gemma 4 26B A4B · Xeon","base_url":"https://redhataigemma-4-26b-a4b-it-sml-rhxintel-loan.apps.rhgaudi3s2.fm2aihpcsed.com","provider":"Intel Xeon CPU (declared by the OpenShift AI hardware profile)","runtime":"Red Hat AI Inference vLLM CPU runtime"}}
+    {"qwen25-3b-cpu":{"label":"Qwen 2.5 3B Instruct · Xeon","base_url":"http://qwen25-3b-cpu-predictor:8080","provider":"Intel Xeon CPU (declared by the OpenShift AI hardware profile)","runtime":"Red Hat AI Inference vLLM CPU runtime"}}
   ACCELERATOR_MODEL_ENDPOINTS_JSON: >-
     {"gaudi-llama-31-8b":{"label":"Llama 3.1 8B · Gaudi 3","base_url":"http://gaudi-llama-31-8b-predictor:8080","provider":"Intel Gaudi 3 accelerator (observed by OpenShift device allocation)","runtime":"Red Hat AI Inference vLLM Gaudi runtime"},"gaudi-granite-31-8b":{"label":"Granite 3.1 8B LAB · Gaudi 3","base_url":"http://gaudi-granite-31-8b-predictor:8080","provider":"Intel Gaudi 3 accelerator (observed by OpenShift device allocation)","runtime":"Red Hat AI Inference vLLM Gaudi runtime"}}
-  CPU_API_BASE: https://redhataillama-31-8b-instruct-rhxintel-loan.apps.rhgaudi3s2.fm2aihpcsed.com
-  CPU_CLASSIFY_MODEL: redhataillama-31-8b-instruct
-  CPU_NER_MODEL: redhataillama-31-8b-instruct
-  CPU_SUMMARY_MODEL: redhataillama-31-8b-instruct
+  CPU_API_BASE: http://qwen25-3b-cpu-predictor:8080
+  CPU_CLASSIFY_MODEL: qwen25-3b-cpu
+  CPU_NER_MODEL: qwen25-3b-cpu
+  CPU_SUMMARY_MODEL: qwen25-3b-cpu
   CPU_HARDWARE_PROVIDER: Intel Xeon CPU (declared by the OpenShift AI hardware profile)
   CPU_INFERENCE_RUNTIME: Red Hat AI Inference vLLM CPU runtime
-  INFERENCE_TLS_VERIFY: "false"
+  INFERENCE_TLS_VERIFY: "true"
   GPU_API_BASE: http://gaudi-llama-31-8b-predictor:8080
   GPU_MODEL: gaudi-llama-31-8b
   GPU_HARDWARE_PROVIDER: Intel Gaudi 3 accelerator (observed by OpenShift device allocation)
@@ -96,11 +96,11 @@ data:
       escalation_routes: [complex]
     routes:
       - name: simple
-        model: redhataillama-31-8b-instruct
+        model: qwen25-3b-cpu
         anchors: ["Classify one clinical document", "Label a record", "Choose one category"]
         keywords: [classify, label, category]
       - name: medium
-        model: redhataillama-31-8b-instruct
+        model: qwen25-3b-cpu
         anchors: ["Extract medications as structured JSON", "List entities from a clinical document"]
         keywords: [extract, list, structured]
       - name: complex

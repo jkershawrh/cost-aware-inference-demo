@@ -9,3 +9,4 @@ __pycache__/
 .env
 *.kubeconfig
 deploy/openshift/secret.yaml
+deploy/openshift/external-endpoints.env

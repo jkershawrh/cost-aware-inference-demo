@@ -11,12 +11,12 @@ presentation:
 source_material:
   mode: repository-and-design-brief
   items:
-    - /Users/jkershaw/Documents/triforce
+    - repository://triforce
     - demo-blueprint.yaml
     - https://access.redhat.com/ai/system-card/red-hat-ai-inference
     - https://docs.redhat.com/en/documentation/red_hat_ai/3/html/supported_product_and_hardware_configurations/rhaiis-supported-ai-accelerators_supported-configurations
   consequential_assumptions:
-    - The first target cluster is rhgaudi3s2; Intel Gaudi 3 must be labeled Technology Preview under the current Red Hat AI support statement.
+    - The deployment target must be supplied outside the public repository; Intel Gaudi 3 must be labeled Technology Preview under the current Red Hat AI support statement.
     - CPU hardware and accelerator provider are DECLARED until platform telemetry proves them OBSERVED.
     - Costs are scenario inputs, not quotes.
 

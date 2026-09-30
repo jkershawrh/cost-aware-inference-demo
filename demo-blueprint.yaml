@@ -3,15 +3,15 @@ status: reviewed
 source:
   name: cross-industry cost-aware inference from Triforce patterns
   kind: repository-and-design-brief
-  location: /Users/jkershaw/Documents/cost-aware-inference-demo
+  location: repository://cost-aware-inference-demo
   revision: working-tree
   discovered_at: "2026-09-30"
   inspected_artifacts:
-    - /Users/jkershaw/Documents/triforce/services/healthcare-agent/graph.py
-    - /Users/jkershaw/Documents/triforce/services/semantic-router/router.py
-    - /Users/jkershaw/Documents/triforce/contracts/openapi/healthcare-agent.yaml
-    - /Users/jkershaw/Documents/triforce/contracts/mcp/fhir-tools.json
-    - /Users/jkershaw/Documents/triforce/tests/benchmark_rubric.yaml
+    - repository://triforce/services/healthcare-agent/graph.py
+    - repository://triforce/services/semantic-router/router.py
+    - repository://triforce/contracts/openapi/healthcare-agent.yaml
+    - repository://triforce/contracts/mcp/fhir-tools.json
+    - repository://triforce/tests/benchmark_rubric.yaml
     - services/proof-api/app.py
     - services/proof-api/pipeline.py
     - services/proof-api/evaluation.py
