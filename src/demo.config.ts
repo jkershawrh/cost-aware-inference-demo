@@ -1,0 +1,59 @@
+import type { DemoConfig } from './types'
+import { BakeoffLive } from './scenes/BakeoffLive'
+
+const technicalTopology = {
+  boundary: { label: 'Red Hat OpenShift AI', detail: 'one governed application and inference boundary' },
+  entry: { id: 'case', kind: 'workload', label: 'Healthcare case', detail: 'one fixed discharge summary and acceptance rule' },
+  primaryPath: [
+    { id: 'api', kind: 'service', label: 'Proof API', detail: 'runs three policies concurrently', endpoint: 'POST /api/v1/bakeoff', edgeLabel: 'HTTPS' },
+    { id: 'router', kind: 'policy', label: 'Cost-aware router', detail: 'step, confidence, schema, and quality policy', edgeLabel: 'classify step' },
+    { id: 'inference', kind: 'runtime', label: 'Red Hat AI Inference', detail: 'one OpenAI-compatible contract across tiers', edgeLabel: 'route call' },
+    { id: 'compute', kind: 'compute', label: 'CPU + accelerator tiers', detail: 'Intel Xeon or AMD EPYC · NVIDIA, AMD, or Intel accelerator', edgeLabel: 'execute' },
+  ],
+  supportPath: [
+    { id: 'mcp', kind: 'tool', label: 'MCP evidence', detail: 'bounded drug-interaction lookup', edgeLabel: 'ground' },
+    { id: 'eval', kind: 'policy', label: 'Eval + cost model', detail: 'case score, latency, and visible hourly assumptions', edgeLabel: 'measure' },
+    { id: 'decision', kind: 'authority', label: 'Human decision', detail: 'choose placement; no automated clinical decision', edgeLabel: 'review' },
+  ],
+}
+
+export const demoConfig: DemoConfig = {
+  id: 'cost-aware-inference-demo',
+  title: 'Every step on the right compute',
+  subtitle: 'A cost-aware healthcare inference bake-off on Red Hat AI',
+  event: 'Customer briefing',
+  audience: 'AI platform, application, and business leaders',
+  cta: 'Prove the placement decision with your workload.',
+  brand: { primary: { name: 'Red Hat', logo: '/logos/redhat.svg', alt: 'Red Hat' }, attribution: 'Red Hat AI · open compute choice' },
+  acts: [
+    { id: 'decision', label: '01', title: 'The Decision', scenes: [
+      { id: 'intro', type: 'intro', beat: 'ordinary-world', title: 'Every agent task is becoming dozens of inference calls', subtitle: 'The expensive question is no longer “CPU or GPU?” It is “which step belongs where?”', speakerPrompt: 'Open with the customer decision: protect quality while reducing the cost of a completed task.' },
+      { id: 'reframe', type: 'reframe', beat: 'stakes', eyebrow: 'The business reframe', title: 'Stop buying one compute answer for every inference step', before: 'Size the whole agent loop for its hardest call', after: 'Place each step on the least-cost tier that passes', detail: 'Classification, extraction, tool selection, and summarization do not have the same latency, schema, or reasoning needs.', speakerPrompt: 'Do not claim CPU replaces accelerators. The claim is deliberate placement against a visible acceptance rule.' },
+    ] },
+    { id: 'architecture', label: '02', title: 'Guided Architecture', scenes: [
+      { id: 'guided-architecture', type: 'guided-architecture', beat: 'system-reveal', eyebrow: 'Guided system design', title: 'One application contract. Three policies. Observable evidence.', body: 'Answer one architectural question at a time, then reveal the runtime object that owns it.', technicalTopology, layers: [
+        { id: 'workload', component: 'Fixed workload', tone: 'primary', question: 'How do we make the comparison fair?', answer: 'The same case, prompts, tools, and acceptance rule enter all three lanes.', detail: 'The healthcare pipeline is classify → extract → MCP evidence → summarize.', activeNodeIds: ['case', 'api'] },
+        { id: 'placement', component: 'Placement policy', tone: 'success', question: 'Who decides where each call runs?', answer: 'A policy routes by step complexity and fails closed when a required tier is unavailable.', detail: 'CPU-only and accelerator-only are controls. Heterogeneous placement is the policy under test.', activeNodeIds: ['router'] },
+        { id: 'runtime', component: 'Inference contract', tone: 'primary', question: 'Does the application change when compute changes?', answer: 'No. Red Hat AI Inference exposes one OpenAI-compatible API across supported runtimes.', detail: 'The router changes the endpoint and model—not the healthcare application contract.', activeNodeIds: ['inference'] },
+        { id: 'hardware', component: 'Compute options', tone: 'partner', question: 'What hardware can participate?', answer: 'CPU work can use Intel Xeon or AMD EPYC; acceleration can use NVIDIA, AMD, or Intel hardware where supported.', detail: 'Every result declares model, runtime, provider, route, and source state. Intel Gaudi 3 is identified as Technology Preview where used.', activeNodeIds: ['compute'] },
+        { id: 'evidence', component: 'Evidence + evaluation', tone: 'success', question: 'How do we know the cheaper route is still acceptable?', answer: 'The system preserves MCP evidence, scores the named case, and prices measured execution time using visible assumptions.', detail: 'Quality claims apply only to this eval case. Costs are modeled—not quotes.', activeNodeIds: ['mcp', 'eval', 'decision'] },
+      ], speakerPrompt: 'Pause at each question. Tie every box to fairness, placement, portability, or proof.' },
+    ] },
+    { id: 'proof', label: '03', title: 'Live Bake-off', scenes: [
+      { id: 'bakeoff', type: 'custom', beat: 'live-proof', component: BakeoffLive, speakerPrompt: 'State the source badge first. Run all lanes together, compare cost and quality, then open the prompts and outputs.' },
+    ] },
+    { id: 'mechanism', label: '04', title: 'Why It Works', scenes: [
+      { id: 'policy', type: 'mechanisms', beat: 'trials', eyebrow: 'The placement rule', title: 'CPU first is a policy—not a slogan', body: 'A step stays on the least-cost tier only while it satisfies the contract.', mechanisms: [
+        { id: 'structured', label: 'Structured first', claim: 'Use CPU for short, constrained work.', detail: 'Classification and extraction remain on CPU when schema and confidence checks pass.', tone: 'success' },
+        { id: 'escalate', label: 'Escalate deliberately', claim: 'Use acceleration for the hard step.', detail: 'Longer synthesis or any failed confidence/schema check can move to an accelerator.', tone: 'primary' },
+        { id: 'portable', label: 'Keep choice open', claim: 'The contract outlives the hardware choice.', detail: 'Red Hat provides the platform contract; Intel, AMD, and NVIDIA participate according to workload fit and supported lifecycle.', tone: 'partner' },
+      ], citation: { label: 'Red Hat AI Inference supported configurations', url: 'https://docs.redhat.com/en/documentation/red_hat_ai/3/html/supported_product_and_hardware_configurations/rhaiis-supported-ai-accelerators_supported-configurations' }, speakerPrompt: 'Be explicit: hardware support levels vary. The UI reports what actually served each call.' },
+    ] },
+    { id: 'close', label: '05', title: 'The Payoff', scenes: [
+      { id: 'payoff', type: 'punchline', beat: 'transformation', eyebrow: 'The decision', title: 'Optimize the completed task—not an isolated token', line1: 'One endpoint contract. Multiple compute tiers.', line2: 'Quality decides. Cost breaks the tie.', cta: 'Next: run your workload, assumptions, and acceptance rule.', speakerPrompt: 'Close on the customer method, not a universal winner. Their workload determines placement.' },
+    ] },
+  ],
+  journeyHandoffs: [
+    { depth: 'guided', title: 'Guided workload workshop', duration: '25–40 minutes', question: 'Which steps can move without lowering the acceptance rate?', technology: 'Red Hat OpenShift AI · Red Hat AI Inference · CPU and accelerator tiers', instruction: 'Replace the case set, set cost assumptions, run the eval, and review every routed call.' },
+  ],
+}

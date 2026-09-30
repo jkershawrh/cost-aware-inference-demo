@@ -1,0 +1,88 @@
+version: 1
+blueprint: demo-blueprint.yaml
+presentation:
+  title: Every step on the right compute
+  audience: Enterprise AI platform leaders, architects, and application owners
+  desired_decision: Approve a workload-specific heterogeneous inference proof on Red Hat AI
+  duration_minutes: 7
+  core_tension: The fastest hardware is not automatically the best place for every step of a completed task.
+  cta: Bring one workload, one eval set, and your real cost assumptions.
+
+source_material:
+  mode: repository-and-design-brief
+  items:
+    - /Users/jkershaw/Documents/triforce
+    - demo-blueprint.yaml
+    - https://access.redhat.com/ai/system-card/red-hat-ai-inference
+    - https://docs.redhat.com/en/documentation/red_hat_ai/3/html/supported_product_and_hardware_configurations/rhaiis-supported-ai-accelerators_supported-configurations
+  consequential_assumptions:
+    - The first target cluster is rhgaudi3s2; Intel Gaudi 3 must be labeled Technology Preview under the current Red Hat AI support statement.
+    - CPU hardware and accelerator provider are DECLARED until platform telemetry proves them OBSERVED.
+    - Costs are scenario inputs, not quotes.
+
+architecture:
+  actors: [Presenter, Workload owner]
+  boundaries: [OpenShift namespace, OpenAI-compatible API, eval acceptance threshold]
+  critical_flows: [policy-bakeoff, healthcare-agent-loop]
+  omitted_from_main_story:
+    - PostgreSQL audit storage
+    - Kafka event transport
+    - unrelated Triforce verticals and modules
+    - supplier list prices
+
+beats:
+  - {beat: ordinary-world, claim: One agent task is many inference decisions not one prompt.}
+  - {beat: stakes, claim: Premium compute can be consumed by short structured work that may not require it.}
+  - {beat: root-cause, claim: Tokens per second does not tell the application owner the cost of an accepted completed task.}
+  - {beat: reframe, claim: Route each step to the least-cost Red Hat AI Inference tier that meets its workload threshold.}
+  - {beat: system-reveal, claim: One OpenAI-compatible application contract fronts CPU and accelerator targets; the policy changes placement not application code.}
+  - {beat: live-proof, claim: The same healthcare case runs concurrently as CPU-only accelerator-only and heterogeneous.}
+  - {beat: trials, claim: A policy wins only if the returned output passes the named eval threshold under visible cost assumptions.}
+  - {beat: transformation, claim: The platform decision moves from buying one tier to placing each step with evidence.}
+  - {beat: next-journey, claim: Repeat the bake-off with the customer's workload models traffic and rates.}
+
+evidence:
+  - id: red-hat-inference-options
+    claim: Red Hat AI Inference uses OpenAI-compatible vLLM endpoints and supports CPU on Intel Xeon and AMD EPYC NVIDIA and AMD GPU options and Intel Gaudi 3 as Technology Preview.
+    classification: verified-fact
+    source: https://access.redhat.com/ai/system-card/red-hat-ai-inference
+    owner: Red Hat
+    last_verified: "2026-09-30"
+    treatment: Use as architecture scope; label current support status and do not imply every option is present in the live cluster.
+  - id: live-bakeoff
+    claim: Three policies returned outputs latency route provenance eval score and modeled cost during this browser session.
+    classification: live-measurement
+    source: POST /api/v1/bakeoff
+    owner: Demo runtime
+    last_verified: null
+    treatment: Show only when the live response succeeds; otherwise show the checked-in fixture as REHEARSAL.
+  - id: cost-result
+    claim: Cost per completed task is calculated from measured accelerator time and the assumptions shown on screen.
+    classification: interpretation
+    source: services/proof-api/evaluation.py
+    owner: Workload owner
+    last_verified: "2026-09-30"
+    treatment: Keep assumptions beside every cost comparison.
+
+live_systems:
+  - id: proof-api
+    endpoint: /proof/api/v1/bakeoff
+    timeout_ms: 180000
+    source_states: [LIVE, REHEARSAL, OFFLINE]
+  - id: red-hat-ai-inference-cpu
+    endpoint: configured by deployment secret
+    compatible_hardware: [Intel Xeon, AMD EPYC]
+  - id: red-hat-ai-inference-accelerator
+    endpoint: configured by deployment secret
+    compatible_hardware: [NVIDIA GPU, AMD Instinct GPU, Intel Gaudi 3 Technology Preview]
+
+journey:
+  presentation: Seven-minute decision story ending in the current-session bake-off result
+  live_demonstration: Change cost assumptions and inspect each model prompt and response
+  guided_demo: Trace route decisions OpenShift resources model endpoints MCP evidence and eval policy
+  hands_on_lab: Add a workload case tune routing thresholds run load tests and produce a reviewable placement recommendation
+
+open_questions:
+  - Which CPU endpoint and model are already running on rhgaudi3s2?
+  - Which Gaudi model endpoint is available and what support-state label must be displayed?
+  - Is the healthcare MCP gateway deployed on the test cluster or should the first run visibly use rehearsal interaction evidence?

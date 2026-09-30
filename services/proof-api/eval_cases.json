@@ -1,0 +1,12 @@
+{
+  "discharge-stemi-001": {
+    "title": "Cardiac discharge summary with medication interaction context",
+    "text": "DISCHARGE SUMMARY: 72-year-old male with Type 2 Diabetes on Metformin 500mg and Lisinopril 10mg. Recent STEMI with PCI to RCA. Started on Aspirin 81mg and Clopidogrel 75mg. History of hypertension and CKD stage 3.",
+    "expected": {
+      "classification": "discharge_summary",
+      "entities": ["Type 2 Diabetes", "Metformin", "Lisinopril", "STEMI", "PCI", "Aspirin", "Clopidogrel", "hypertension", "CKD"],
+      "interaction_pairs": [["Aspirin", "Clopidogrel"]],
+      "summary_concepts": ["STEMI", "PCI", "Aspirin", "Clopidogrel"]
+    }
+  }
+}

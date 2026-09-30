@@ -1,0 +1,249 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cost-aware-inference-demo
+  labels:
+    app.kubernetes.io/part-of: cost-aware-inference-demo
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: presentation
+  namespace: cost-aware-inference-demo
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: proof-api
+  namespace: cost-aware-inference-demo
+---
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: presentation
+  namespace: cost-aware-inference-demo
+spec:
+  source:
+    type: Binary
+  strategy:
+    type: Docker
+    dockerStrategy:
+      dockerfilePath: Containerfile
+  output:
+    to:
+      kind: ImageStreamTag
+      name: presentation:latest
+---
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: proof-api
+  namespace: cost-aware-inference-demo
+spec:
+  source:
+    type: Binary
+  strategy:
+    type: Docker
+    dockerStrategy:
+      dockerfilePath: Containerfile
+  output:
+    to:
+      kind: ImageStreamTag
+      name: proof-api:latest
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: proof-api-config
+  namespace: cost-aware-inference-demo
+data:
+  CPU_API_BASE: https://redhataillama-31-8b-instruct-rhxintel-loan.apps.rhgaudi3s2.fm2aihpcsed.com
+  CPU_CLASSIFY_MODEL: redhataillama-31-8b-instruct
+  CPU_NER_MODEL: redhataillama-31-8b-instruct
+  CPU_SUMMARY_MODEL: redhataillama-31-8b-instruct
+  CPU_HARDWARE_PROVIDER: Intel Xeon CPU (declared by the OpenShift AI hardware profile)
+  CPU_INFERENCE_RUNTIME: Red Hat AI Inference vLLM CPU runtime
+  INFERENCE_TLS_VERIFY: "false"
+  GPU_API_BASE: ""
+  GPU_MODEL: ""
+  GPU_HARDWARE_PROVIDER: accelerator tier not currently available
+  GPU_INFERENCE_RUNTIME: Red Hat AI Inference accelerator runtime
+  SEMANTIC_ROUTER_URL: http://semantic-router:8094
+  MCP_GATEWAY_URL: ""
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: semantic-router-config
+  namespace: cost-aware-inference-demo
+data:
+  routes.yaml: |
+    version: "cost-aware-1.0"
+    scoring:
+      weights: { embedding_max: 0.7, embedding_avg: 0.3 }
+      confidence_cap: 0.99
+      word_count_thresholds: { complex: 80, medium: 40 }
+    embedding: { model: all-MiniLM-L6-v2 }
+    heterogeneous:
+      enabled: true
+      gpu_model: accelerator-model-not-configured
+      escalation_routes: [complex]
+    routes:
+      - name: simple
+        model: redhataillama-31-8b-instruct
+        anchors: ["Classify one clinical document", "Label a record", "Choose one category"]
+        keywords: [classify, label, category]
+      - name: medium
+        model: redhataillama-31-8b-instruct
+        anchors: ["Extract medications as structured JSON", "List entities from a clinical document"]
+        keywords: [extract, list, structured]
+      - name: complex
+        model: accelerator-model-not-configured
+        anchors: ["Synthesize clinical findings and risks into a physician handoff", "Reason across evidence and draft a final answer"]
+        keywords: [synthesize, reasoning, handoff, draft]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: semantic-router
+  namespace: cost-aware-inference-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: semantic-router }
+  template:
+    metadata:
+      labels: { app: semantic-router }
+    spec:
+      containers:
+        - name: semantic-router
+          image: quay.io/redhat-gpte/triforce-semantic-router@sha256:b1fb0bdd5dc35510402d5a32ea24856e6a2c8ee91ba66598ce3caf67fa1ad58f
+          imagePullPolicy: Always
+          env:
+            - { name: SEMANTIC_ROUTER_PORT, value: "8094" }
+            - { name: HETEROGENEOUS_ROUTING, value: "true" }
+            - { name: GPU_COMPLEX_MODEL, value: accelerator-model-not-configured }
+            - { name: ROUTES_CONFIG, value: /app/config/routes.yaml }
+          volumeMounts:
+            - { name: config, mountPath: /app/config, readOnly: true }
+          ports:
+            - { name: http, containerPort: 8094 }
+          readinessProbe:
+            httpGet: { path: /health, port: http }
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          resources:
+            requests: { cpu: 250m, memory: 512Mi }
+            limits: { cpu: "2", memory: 2Gi }
+      volumes:
+        - name: config
+          configMap: { name: semantic-router-config }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: semantic-router
+  namespace: cost-aware-inference-demo
+spec:
+  selector: { app: semantic-router }
+  ports:
+    - { name: http, port: 8094, targetPort: http }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: proof-api
+  namespace: cost-aware-inference-demo
+  annotations:
+    image.openshift.io/triggers: '[{"from":{"kind":"ImageStreamTag","name":"proof-api:latest"},"fieldPath":"spec.template.spec.containers[?(@.name==\"proof-api\")].image"}]'
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: proof-api }
+  template:
+    metadata:
+      labels: { app: proof-api }
+    spec:
+      containers:
+        - name: proof-api
+          image: image-registry.openshift-image-registry.svc:5000/cost-aware-inference-demo/proof-api:latest
+          imagePullPolicy: Always
+          envFrom:
+            - configMapRef: { name: proof-api-config }
+            - secretRef: { name: proof-api-secrets, optional: true }
+          ports:
+            - { name: http, containerPort: 8090 }
+          readinessProbe:
+            httpGet: { path: /health, port: http }
+            initialDelaySeconds: 3
+          livenessProbe:
+            httpGet: { path: /health, port: http }
+            initialDelaySeconds: 10
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { cpu: "1", memory: 512Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: proof-api
+  namespace: cost-aware-inference-demo
+spec:
+  selector: { app: proof-api }
+  ports:
+    - { name: http, port: 8090, targetPort: http }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: presentation
+  namespace: cost-aware-inference-demo
+  annotations:
+    image.openshift.io/triggers: '[{"from":{"kind":"ImageStreamTag","name":"presentation:latest"},"fieldPath":"spec.template.spec.containers[?(@.name==\"presentation\")].image"}]'
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: presentation }
+  template:
+    metadata:
+      labels: { app: presentation }
+    spec:
+      containers:
+        - name: presentation
+          image: image-registry.openshift-image-registry.svc:5000/cost-aware-inference-demo/presentation:latest
+          imagePullPolicy: Always
+          ports:
+            - { name: http, containerPort: 8080 }
+          readinessProbe:
+            httpGet: { path: /, port: http }
+            initialDelaySeconds: 3
+          livenessProbe:
+            httpGet: { path: /, port: http }
+            initialDelaySeconds: 10
+          resources:
+            requests: { cpu: 25m, memory: 32Mi }
+            limits: { cpu: 250m, memory: 128Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: presentation
+  namespace: cost-aware-inference-demo
+spec:
+  selector: { app: presentation }
+  ports:
+    - { name: http, port: 8080, targetPort: http }
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: cost-aware-inference
+  namespace: cost-aware-inference-demo
+  annotations:
+    haproxy.router.openshift.io/timeout: 5m
+spec:
+  to: { kind: Service, name: presentation }
+  port: { targetPort: http }
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
