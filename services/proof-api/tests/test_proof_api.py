@@ -110,6 +110,21 @@ def test_nested_entity_shape_is_normalized_at_the_contract_boundary():
     assert pipeline._entities_from_content(output) == [models.Entity(text="C-1842", type="customer_id")]
 
 
+def test_function_style_entity_shape_is_normalized_at_the_contract_boundary():
+    import pipeline
+
+    output = '''[
+      {"name":"Medication","arguments":{"text":"Metformin 500mg"}},
+      {"name":"Condition","arguments":{"text":"Type 2 Diabetes"}},
+      {"name":"Procedure","arguments":{"text":"STEMI with PCI to RCA"}}
+    ]'''
+    assert pipeline._entities_from_content(output) == [
+        models.Entity(text="Metformin 500mg", type="medication"),
+        models.Entity(text="Type 2 Diabetes", type="condition"),
+        models.Entity(text="STEMI with PCI to RCA", type="procedure"),
+    ]
+
+
 @pytest.mark.asyncio
 async def test_bakeoff_runs_all_policies_in_parallel():
     import app

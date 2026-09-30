@@ -230,6 +230,12 @@ def _entities_from_content(content: str) -> list[Entity]:
         if not isinstance(item, dict):
             continue
         candidate = item
+        if candidate.get("name") and isinstance(candidate.get("arguments"), dict):
+            arguments = candidate["arguments"]
+            candidate = {
+                "text": arguments.get("text"),
+                "type": arguments.get("type") or candidate.get("name"),
+            }
         if not (candidate.get("text") and candidate.get("type")) and len(candidate) == 1:
             nested = next(iter(candidate.values()))
             candidate = nested if isinstance(nested, dict) else candidate
