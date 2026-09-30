@@ -50,7 +50,7 @@ export const demoConfig: DemoConfig = {
       ], citation: { label: 'Red Hat AI Inference supported configurations', url: 'https://docs.redhat.com/en/documentation/red_hat_ai/3/html/supported_product_and_hardware_configurations/rhaiis-supported-ai-accelerators_supported-configurations' }, speakerPrompt: 'Be explicit: hardware support levels vary. The UI reports what actually served each call.' },
     ] },
     { id: 'close', label: '05', title: 'The Payoff', scenes: [
-      { id: 'payoff', type: 'punchline', beat: 'transformation', eyebrow: 'The decision', title: 'Optimize the completed task—not an isolated token', line1: 'One endpoint contract. Multiple compute tiers.', line2: 'Quality decides. Cost breaks the tie.', cta: 'Next: run your workload, assumptions, and acceptance rule.', speakerPrompt: 'Close on the customer method, not a universal winner. Their workload determines placement.' },
+      { id: 'payoff', type: 'punchline', beat: 'transformation', eyebrow: 'The decision', title: 'Right workload. Right compute.', line1: 'One API. Multiple tiers.', line2: 'Pass quality. Lower cost.', cta: 'Next: test yours.', speakerPrompt: 'Close on the customer method, not a universal winner. Their workload determines placement.' },
     ] },
   ],
   journeyHandoffs: [

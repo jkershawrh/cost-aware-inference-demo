@@ -138,7 +138,7 @@ describe('SceneRenderer', () => {
   it('closes on a bounded decision rather than a universal hardware winner', () => {
     const scene = scenes.find((item) => item.beat === 'transformation')!
     render(<SceneRenderer scene={scene} brand={demoConfig.brand} />)
-    expect(screen.getByText('Quality decides. Cost breaks the tie.')).toBeInTheDocument()
+    expect(screen.getByText('Pass quality. Lower cost.')).toBeInTheDocument()
   })
 
   const architectureScenes: SceneConfig[] = [
