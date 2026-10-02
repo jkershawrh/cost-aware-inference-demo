@@ -28,9 +28,14 @@ class BakeoffRequest(BaseModel):
     case_id: str = "discharge-stemi-001"
     cpu_model: Optional[str] = None
     accelerator_model: Optional[str] = None
-    policies: list[ExecutionPolicy] = Field(default_factory=lambda: list(ExecutionPolicy))
+    policies: list[ExecutionPolicy] = Field(default_factory=lambda: list(ExecutionPolicy), min_length=1, max_length=3)
     quality_threshold_pct: float = Field(80, ge=0, le=100)
     cost_assumptions: CostAssumptions
+
+
+class QualificationRequest(BakeoffRequest):
+    warmup_runs: int = Field(1, ge=0, le=5)
+    measured_runs: int = Field(10, ge=1, le=30)
 
 
 class Entity(BaseModel):
@@ -174,3 +179,56 @@ class CatalogResponse(BaseModel):
     verticals: list[VerticalOption]
     cpu_models: list[ModelOption]
     accelerator_models: list[ModelOption]
+
+
+class QualificationManifest(BaseModel):
+    environment: QualificationEnvironment
+    framework_revision: str
+    platform: dict[str, str]
+    resource_profile: dict[str, dict]
+    cpu_model: str
+    accelerator_model: str
+    case_id: str
+    placement_schema_version: Literal["placement-evidence/v1"] = "placement-evidence/v1"
+
+
+class PolicyQualificationSummary(BaseModel):
+    policy: ExecutionPolicy
+    attempted_runs: int = Field(ge=1)
+    completed_runs: int = Field(ge=0)
+    passed_runs: int = Field(ge=0)
+    pass_rate_pct: float = Field(ge=0, le=100)
+    failure_rate_pct: float = Field(ge=0, le=100)
+    live_mcp_rate_pct: float = Field(ge=0, le=100)
+    routing_available_rate_pct: float = Field(ge=0, le=100)
+    median_execution_ms: Optional[float] = Field(default=None, ge=0)
+    p95_execution_ms: Optional[int] = Field(default=None, ge=0)
+    median_quality_pct: Optional[float] = Field(default=None, ge=0, le=100)
+    minimum_quality_pct: Optional[float] = Field(default=None, ge=0, le=100)
+    median_cost_per_1000_tasks_usd: Optional[float] = Field(default=None, ge=0)
+
+
+class QualificationReport(BaseModel):
+    schema_version: Literal["qualification-evidence/v1"] = "qualification-evidence/v1"
+    qualification_id: str
+    created_at: str
+    completed_at: str
+    warmup_runs: int = Field(ge=0, le=5)
+    measured_runs: int = Field(ge=1, le=30)
+    execution_pattern: Literal["sequential_trials_parallel_policies"] = "sequential_trials_parallel_policies"
+    manifest: QualificationManifest
+    summaries: list[PolicyQualificationSummary]
+    trials: list[BakeoffResponse]
+
+
+class QualificationJob(BaseModel):
+    schema_version: Literal["qualification-job/v1"] = "qualification-job/v1"
+    job_id: str
+    status: Literal["queued", "warming", "measuring", "completed", "failed"]
+    created_at: str
+    warmup_runs: int = Field(ge=0, le=5)
+    measured_runs: int = Field(ge=1, le=30)
+    completed_warmup_runs: int = Field(ge=0)
+    completed_measured_runs: int = Field(ge=0)
+    report: Optional[QualificationReport] = None
+    error: Optional[str] = None

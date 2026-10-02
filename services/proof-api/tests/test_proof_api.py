@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 from jsonschema import Draft202012Validator, FormatChecker
+from pydantic import ValidationError
 
 import evaluation
 import models
@@ -280,3 +281,107 @@ def test_response_satisfies_versioned_placement_evidence_contract():
     schema_path = Path(__file__).parents[3] / "contracts" / "schemas" / "placement-evidence-v1.json"
     schema = json.loads(schema_path.read_text())
     Draft202012Validator(schema, format_checker=FormatChecker()).validate(response.model_dump(mode="json"))
+
+
+def qualification_trial(execution_ms: int, score: float = 100, source: str = "live"):
+    pipeline_result = result()
+    pipeline_result.execution_ms = execution_ms
+    pipeline_result.total_ms = execution_ms
+    pipeline_result.inference_log[0].source_state = source
+    evaluated = evaluation.evaluate("discharge-stemi-001", pipeline_result, 80)
+    evaluated.score_pct = score
+    evaluated.passed = score >= 80
+    return models.BakeoffResponse(
+        environment=models.QualificationEnvironment(id="intel-reference", label="Intel", vendors=["intel"]),
+        vertical="healthcare", case_id="discharge-stemi-001", case_title="case",
+        collected_at="2026-10-02T00:00:00Z", policies_run=1,
+        runs=[models.PolicyRun(
+            policy=models.ExecutionPolicy.cpu_only, status="completed", source_state="live",
+            result=pipeline_result, evaluation=evaluated,
+            modeled_cost=evaluation.model_cost(pipeline_result, models.CostAssumptions(
+                cpu_already_provisioned=False, cpu_hourly_usd=4, accelerator_hourly_usd=36,
+            )),
+        )],
+    )
+
+
+def test_qualification_summary_reports_median_p95_quality_and_source_consistency():
+    import app
+
+    trials = [qualification_trial(value) for value in [100, 200, 300, 400, 1000]]
+    summary = app._qualification_summary(models.ExecutionPolicy.cpu_only, trials)
+    assert summary.attempted_runs == 5
+    assert summary.completed_runs == 5
+    assert summary.pass_rate_pct == 100
+    assert summary.failure_rate_pct == 0
+    assert summary.live_mcp_rate_pct == 0  # This unit fixture has no MCP step.
+    assert summary.routing_available_rate_pct == 100
+    assert summary.median_execution_ms == 300
+    assert summary.p95_execution_ms == 1000
+    assert summary.minimum_quality_pct == 100
+
+
+@pytest.mark.asyncio
+async def test_qualification_runs_warmups_then_measured_trials_and_validates_contract(monkeypatch):
+    import app
+
+    calls = 0
+
+    async def fake_bakeoff(_request):
+        nonlocal calls
+        calls += 1
+        return qualification_trial(100 * calls)
+
+    request = models.QualificationRequest(
+        policies=[models.ExecutionPolicy.cpu_only], warmup_runs=1, measured_runs=3,
+        cost_assumptions=models.CostAssumptions(
+            cpu_already_provisioned=False, cpu_hourly_usd=4, accelerator_hourly_usd=36,
+        ),
+    )
+    job_id = "8d749e42-4197-4c9d-b5f0-b33a297cdf5c"
+    app.QUALIFICATION_JOBS[job_id] = models.QualificationJob(
+        job_id=job_id, status="queued", created_at="2026-10-02T00:00:00Z",
+        warmup_runs=1, measured_runs=3, completed_warmup_runs=0, completed_measured_runs=0,
+    )
+    monkeypatch.setattr(app, "_execute_bakeoff", fake_bakeoff)
+    await app._run_qualification(job_id, request)
+
+    job = app.QUALIFICATION_JOBS[job_id]
+    assert calls == 4
+    assert job.status == "completed"
+    assert job.completed_warmup_runs == 1
+    assert job.completed_measured_runs == 3
+    assert [trial.runs[0].result.execution_ms for trial in job.report.trials] == [200, 300, 400]
+    schema_path = Path(__file__).parents[3] / "contracts" / "schemas" / "qualification-evidence-v1.json"
+    schema = json.loads(schema_path.read_text())
+    Draft202012Validator(schema, format_checker=FormatChecker()).validate(job.report.model_dump(mode="json"))
+
+
+def test_qualification_request_bounds_repetition_count():
+    with pytest.raises(ValidationError):
+        models.QualificationRequest(
+            measured_runs=31,
+            cost_assumptions=models.CostAssumptions(
+                cpu_already_provisioned=True, cpu_hourly_usd=4, accelerator_hourly_usd=36,
+            ),
+        )
+
+
+@pytest.mark.asyncio
+async def test_qualification_rejects_concurrent_job_to_protect_measurement_integrity():
+    import app
+    from fastapi import HTTPException
+
+    app.QUALIFICATION_JOBS.clear()
+    active_id = "f3b44c49-3f02-4934-a815-7b97db25206e"
+    app.QUALIFICATION_JOBS[active_id] = models.QualificationJob(
+        job_id=active_id, status="measuring", created_at="2026-10-02T00:00:00Z",
+        warmup_runs=1, measured_runs=10, completed_warmup_runs=1, completed_measured_runs=2,
+    )
+    request = models.QualificationRequest(cost_assumptions=models.CostAssumptions(
+        cpu_already_provisioned=True, cpu_hourly_usd=4, accelerator_hourly_usd=36,
+    ))
+    with pytest.raises(HTTPException) as exc:
+        await app.start_qualification(request)
+    assert exc.value.status_code == 409
+    app.QUALIFICATION_JOBS.clear()

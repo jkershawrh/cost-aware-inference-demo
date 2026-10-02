@@ -77,8 +77,66 @@ export interface BakeoffCatalog {
   accelerator_models: Array<{ id: string; label: string; provider: string; runtime: string; vendor?: 'intel' | 'amd' | 'nvidia' | 'other'; product?: string; identity_source?: 'observed' | 'declared'; support_status?: 'supported' | 'technology_preview' | 'unknown'; target_id?: string; available: boolean }>
 }
 
+interface QualificationSummary {
+  policy: BakeoffRun['policy']
+  attempted_runs: number
+  completed_runs: number
+  passed_runs: number
+  pass_rate_pct: number
+  failure_rate_pct: number
+  live_mcp_rate_pct: number
+  routing_available_rate_pct: number
+  median_execution_ms?: number
+  p95_execution_ms?: number
+  median_quality_pct?: number
+  minimum_quality_pct?: number
+  median_cost_per_1000_tasks_usd?: number
+}
+
+interface QualificationReport {
+  schema_version: 'qualification-evidence/v1'
+  qualification_id: string
+  created_at: string
+  completed_at: string
+  warmup_runs: number
+  measured_runs: number
+  execution_pattern: 'sequential_trials_parallel_policies'
+  manifest: {
+    environment: NonNullable<BakeoffResponse['environment']>
+    framework_revision: string
+    platform: Record<string, string>
+    resource_profile: Record<string, Record<string, unknown>>
+    cpu_model: string
+    accelerator_model: string
+    case_id: string
+    placement_schema_version: 'placement-evidence/v1'
+  }
+  summaries: QualificationSummary[]
+  trials: BakeoffResponse[]
+}
+
+interface QualificationJob {
+  job_id: string
+  status: 'queued' | 'warming' | 'measuring' | 'completed' | 'failed'
+  warmup_runs: number
+  measured_runs: number
+  completed_warmup_runs: number
+  completed_measured_runs: number
+  report?: QualificationReport
+  error?: string
+}
+
 const labels = { cpu_only: 'CPU only', gpu_only: 'Accelerator only', heterogeneous: 'Heterogeneous' }
 const policies: BakeoffRun['policy'][] = ['cpu_only', 'gpu_only', 'heterogeneous']
+
+function downloadEvidence(data: unknown, filename: string) {
+  const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }))
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  link.click()
+  URL.revokeObjectURL(url)
+}
 
 export function EvaluationExplanation({ evaluation }: { evaluation: NonNullable<BakeoffRun['evaluation']> }) {
   const deductions = evaluation.components?.filter((component) => component.earned < component.possible) ?? []
@@ -103,7 +161,13 @@ export function BakeoffLive() {
   const [running, setRunning] = useState(false)
   const [selected, setSelected] = useState<BakeoffRun['policy']>('heterogeneous')
   const [view, setView] = useState<'results' | 'responses'>('results')
+  const [laneEvidence, setLaneEvidence] = useState<Partial<Record<BakeoffRun['policy'], BakeoffResponse>>>({})
+  const [qualificationRuns, setQualificationRuns] = useState(10)
+  const [qualificationWarmups, setQualificationWarmups] = useState(1)
+  const [qualification, setQualification] = useState<QualificationJob | null>(null)
+  const [qualificationError, setQualificationError] = useState<string>()
   const activeRun = useRef<AbortController | null>(null)
+  const activeQualification = useRef<AbortController | null>(null)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -122,7 +186,9 @@ export function BakeoffLive() {
 
   useEffect(() => () => {
     activeRun.current?.abort()
+    activeQualification.current?.abort()
     activeRun.current = null
+    activeQualification.current = null
   }, [])
 
   const run = async () => {
@@ -143,6 +209,7 @@ export function BakeoffLive() {
     }
     const laneSources = new Map<BakeoffRun['policy'], ProofState<BakeoffResponse>['source']>()
     setRunning(true)
+    setLaneEvidence({})
     setView('results')
     const initialState: ProofState<BakeoffResponse> = { status: 'ready', data: initial, collectedAt }
     setProof(initialState)
@@ -171,6 +238,9 @@ export function BakeoffLive() {
       }, controller.signal)
       if (controller.signal.aborted || !state.data) return
       const lane = state.data.runs[0]
+      if (state.data.schema_version === 'placement-evidence/v1') {
+        setLaneEvidence((current) => ({ ...current, [policy]: state.data! }))
+      }
       laneSources.set(policy, state.source)
       setProof((current) => {
         if (!current.data) return current
@@ -197,6 +267,41 @@ export function BakeoffLive() {
     if (activeRun.current === controller) {
       activeRun.current = null
       setRunning(false)
+    }
+  }
+
+  const startQualification = async () => {
+    activeQualification.current?.abort()
+    const controller = new AbortController()
+    activeQualification.current = controller
+    const selectedVertical = catalog.verticals.find((item) => item.id === vertical) ?? catalog.verticals[0]
+    const selectedCase = selectedVertical.cases[0]
+    setQualification(null)
+    setQualificationError(undefined)
+    try {
+      const started = await fetch('/proof/api/v1/qualification', {
+        method: 'POST', signal: controller.signal, headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          vertical, case_id: selectedCase.id, cpu_model: cpuModel, accelerator_model: acceleratorModel,
+          policies, quality_threshold_pct: 80, warmup_runs: qualificationWarmups, measured_runs: qualificationRuns,
+          cost_assumptions: { cpu_already_provisioned: cpuExisting, cpu_hourly_usd: cpuHourly, accelerator_hourly_usd: gpuHourly },
+        }),
+      })
+      if (!started.ok) throw new Error(`Qualification API returned HTTP ${started.status}`)
+      let job = await started.json() as QualificationJob
+      setQualification(job)
+      while (!controller.signal.aborted && !['completed', 'failed'].includes(job.status)) {
+        await new Promise((resolve) => window.setTimeout(resolve, 2000))
+        const response = await fetch(`/proof/api/v1/qualification/${job.job_id}`, { signal: controller.signal, cache: 'no-store' })
+        if (!response.ok) throw new Error(`Qualification status returned HTTP ${response.status}`)
+        job = await response.json() as QualificationJob
+        setQualification(job)
+      }
+      if (job.status === 'failed') throw new Error(job.error || 'Qualification failed')
+    } catch (error) {
+      if (!controller.signal.aborted) setQualificationError(error instanceof Error ? error.message : 'Qualification failed')
+    } finally {
+      if (activeQualification.current === controller) activeQualification.current = null
     }
   }
 
@@ -256,7 +361,7 @@ export function BakeoffLive() {
 
       {proof.status === 'idle' && <div className="bakeoff-idle"><div className="bakeoff-flow"><span>CLASSIFY</span><b>→</b><span>EXTRACT</span><b>→</b><span>MCP EVIDENCE</span><b>→</b><span>SUMMARIZE</span></div><strong>{verticalInfo.description}</strong><small>The same checked-in case and selected models enter all three lanes. Cost inputs are assumptions; quality is scoped to this case.</small></div>}
       {proof.status === 'ready' && proof.data && <>
-        <div className="bakeoff-view-tabs"><button className={view === 'results' ? 'active' : ''} onClick={() => setView('results')}>Measured comparison</button><button disabled={running} className={view === 'responses' ? 'active' : ''} onClick={() => setView('responses')}>Prompts + responses</button>{running ? <span className="source-badge source-mixed">{completed.length} / 3 complete</span> : <span className={`source-badge source-${proof.source}`}>{proof.source}</span>}</div>
+        <div className="bakeoff-view-tabs"><button className={view === 'results' ? 'active' : ''} onClick={() => setView('results')}>Measured comparison</button><button disabled={running} className={view === 'responses' ? 'active' : ''} onClick={() => setView('responses')}>Prompts + responses</button>{laneEvidence[selected] && <button onClick={() => downloadEvidence(laneEvidence[selected], `${vertical}-${selected}-placement-evidence.json`)}>Download selected evidence</button>}{running ? <span className="source-badge source-mixed">{completed.length} / 3 complete</span> : <span className={`source-badge source-${proof.source}`}>{proof.source}</span>}</div>
         {proof.error && <div className="fallback-note">Live endpoint unavailable: showing checked-in rehearsal evidence.</div>}
         {proof.source === 'mixed' && <div className="fallback-note">Live inference · rehearsal MCP evidence. Inspect each step for its source.</div>}
         {view === 'results' ? <div className="bakeoff-grid">
@@ -279,6 +384,25 @@ export function BakeoffLive() {
           {selectedRun?.result ? <><div className="response-summary"><span>FINAL RESPONSE</span><p>{selectedRun.result.summary}</p></div><div className="response-steps">{selectedRun.result.inference_log.map((step) => <div key={step.node}><header><b>{step.node.replace('_', ' ')}</b><span>{step.accelerator.toUpperCase()} · {step.model} · {step.latency_ms}ms</span></header><small>PROMPT IN</small><p>{step.prompt}</p><small>RESPONSE OUT · {step.source_state}</small><p>{step.output}</p></div>)}</div></> : <div className="lane-unavailable">{selectedRun?.error}</div>}
         </div>}
       </>}
+
+      <details className="qualification-tools">
+        <summary>Qualification & export</summary>
+        <div className="qualification-controls">
+          <div><strong>Repeat the selected workload</strong><small>Trials run sequentially; the three policies run concurrently inside each trial.</small></div>
+          <label><span>Warm-ups</span><input aria-label="Qualification warm-up runs" type="number" min="0" max="5" value={qualificationWarmups} onChange={(event) => setQualificationWarmups(Number(event.target.value))} /></label>
+          <label><span>Measured</span><input aria-label="Qualification measured runs" type="number" min="1" max="30" value={qualificationRuns} onChange={(event) => setQualificationRuns(Number(event.target.value))} /></label>
+          <button className="button button-secondary" disabled={Boolean(qualification && !['completed', 'failed'].includes(qualification.status))} onClick={startQualification}>Start qualification</button>
+        </div>
+        {qualification && <div className="qualification-status">
+          <span>{qualification.status.toUpperCase()}</span>
+          <strong>{qualification.status === 'warming' ? `${qualification.completed_warmup_runs} / ${qualification.warmup_runs} warm-ups` : `${qualification.completed_measured_runs} / ${qualification.measured_runs} measured`}</strong>
+          {qualification.report && <>
+            <div className="qualification-summaries">{qualification.report.summaries.map((summary) => <div key={summary.policy}><b>{labels[summary.policy]}</b><small>median {summary.median_execution_ms}ms · p95 {summary.p95_execution_ms}ms · {summary.pass_rate_pct}% pass · {summary.live_mcp_rate_pct}% MCP · {summary.routing_available_rate_pct}% route evidence</small></div>)}</div>
+            <button className="button button-primary" onClick={() => downloadEvidence(qualification.report, `${vertical}-${qualification.report!.qualification_id}-qualification-evidence.json`)}>Download qualification report</button>
+          </>}
+        </div>}
+        {qualificationError && <div className="fallback-note">{qualificationError}</div>}
+      </details>
     </div>
   </SceneFrame>
 }

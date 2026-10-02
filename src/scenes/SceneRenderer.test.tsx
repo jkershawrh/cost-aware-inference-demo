@@ -67,6 +67,16 @@ describe('SceneRenderer', () => {
     expect(screen.getByLabelText('Dedicated CPU dollars per hour')).toBeDisabled()
   })
 
+  it('keeps repeated qualification separate from the presenter comparison', () => {
+    const scene = scenes.find((item) => item.id === 'bakeoff')!
+    render(<SceneRenderer scene={scene} brand={demoConfig.brand} />)
+    fireEvent.click(screen.getByText('Qualification & export'))
+    expect(screen.getByLabelText('Qualification warm-up runs')).toHaveValue(1)
+    expect(screen.getByLabelText('Qualification measured runs')).toHaveValue(10)
+    expect(screen.getByRole('button', { name: 'Start qualification' })).toBeInTheDocument()
+    expect(screen.getByText(/Trials run sequentially/)).toBeInTheDocument()
+  })
+
   it('requests every policy independently and reveals completed lanes progressively', async () => {
     const pending = new Map<string, (response: Response) => void>()
     vi.stubGlobal('fetch', vi.fn((url: string, init?: RequestInit) => {

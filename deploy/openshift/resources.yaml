@@ -59,6 +59,11 @@ metadata:
 data:
   QUALIFICATION_ENVIRONMENT_ID: intel-reference
   QUALIFICATION_ENVIRONMENT_LABEL: Intel Xeon + Gaudi 3 reference environment
+  QUALIFICATION_FRAMEWORK_REVISION: not_recorded
+  QUALIFICATION_PLATFORM_JSON: >-
+    {"openshift":"deployment-provided","openshift_ai":"deployment-provided","red_hat_ai_inference":"deployment-provided","identity_source":"declared"}
+  QUALIFICATION_RESOURCE_PROFILE_JSON: >-
+    {"cpu_endpoint":{"requests":{"cpu":"32","memory":"64Gi"},"limits":{"cpu":"32","memory":"64Gi"}},"accelerator_endpoint":{"requests":{"cpu":"8","memory":"32Gi","accelerator":"1"},"limits":{"cpu":"16","memory":"64Gi","accelerator":"1"}},"semantic_router":{"requests":{"cpu":"250m","memory":"512Mi"},"limits":{"cpu":"2","memory":"2Gi"}},"mcp_gateway":{"requests":{"cpu":"50m","memory":"64Mi"},"limits":{"cpu":"250m","memory":"256Mi"}},"proof_api":{"requests":{"cpu":"100m","memory":"128Mi"},"limits":{"cpu":"1","memory":"512Mi"}}}
   DEFAULT_CPU_MODEL: qwen25-3b-cpu
   DEFAULT_ACCELERATOR_MODEL: gaudi-llama-31-8b
   CPU_MODEL_ENDPOINTS_JSON: >-

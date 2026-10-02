@@ -36,6 +36,8 @@ Red Hat OpenShift AI and Red Hat AI Inference provide the deployment, serving, l
 
 Cross-provider comparison is retrospective: export the versioned `placement-evidence/v1` response from each qualified environment, then compare saved records by timestamp and environment. Set `QUALIFICATION_ENVIRONMENT_ID` and `QUALIFICATION_ENVIRONMENT_LABEL` for every deployment. Never label saved AMD, Intel, and NVIDIA runs as one simultaneous live test.
 
+For repeatable qualification, use **Qualification & export** after selecting the workload and models. The background workflow accepts 0–5 warm-ups and 1–30 measured trials; certification runs should use 10–30 measured trials. It exports `qualification-evidence/v1` with the environment manifest, raw trials, median and p95 execution latency, quality pass consistency, failure rate, live-MCP rate, route-evidence availability, and median execution-cost proxy. One qualification job may run at a time to avoid distorting the shared hardware. Jobs are held in memory, so download the report before restarting the proof API.
+
 ## OpenShift
 
 See `deploy/openshift/README.md`. The public profile targets a dedicated `cost-aware-inference-demo` namespace and keeps cluster identity, external routes, and credentials outside the repository.
