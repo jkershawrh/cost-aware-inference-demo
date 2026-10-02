@@ -1,6 +1,6 @@
 # Cost-Aware Inference Demo
 
-A standalone Triforce-style presentation and live cross-industry bake-off for Red Hat AI. Select Healthcare or Financial Services plus the available CPU and accelerator models, then run the same four-step workload under CPU-only, accelerator-only, and heterogeneous placement policies. The selector changes the real endpoint, prompts, MCP tools, and case-specific evaluation—not just the label. The UI exposes execution and route-planning latency, modeled cost, evaluation, routing decisions, prompts, responses, model identity, and declared hardware identity.
+A standalone Triforce-style presentation and live cross-industry bake-off for Red Hat AI. Select Healthcare or Financial Services plus the available CPU and accelerator models, then run the same four-step workload under CPU-only, accelerator-only, and heterogeneous placement policies. The selector changes the real endpoint, prompts, MCP tools, and case-specific evaluation—not just the label. The UI exposes execution and route-planning latency, an execution-cost proxy, evaluation, routing decisions, prompts, responses, model identity, and hardware evidence.
 
 The three policies start concurrently and return progressively, so a completed lane is visible without waiting for the slowest one. Each vertical's semantic-routing plan is warmed and cached when the proof service starts; an uncached planning cost is reported separately from model execution rather than hidden inside task latency.
 
@@ -24,12 +24,17 @@ Copy `.env.example` to `.env` and export only the endpoints and credentials requ
 - `REHEARSAL` means the browser used the checked-in fixture because the proof API was unavailable.
 - CPU cost is zero only when the presenter explicitly selects **CPUs already provisioned**.
 - Accelerator and dedicated-CPU rates are visible assumptions, not vendor quotes.
+- The displayed cost is an execution-cost proxy: measured inference latency multiplied by the visible hourly assumptions. It excludes utilization, queueing, power, cooling, acquisition, depreciation, and operations.
 - Quality is a deterministic score for the named checked-in case, not a general model-quality claim.
 - Required inference tiers fail closed and appear as `unavailable`; they do not silently borrow another lane.
+- A run compares a placement policy plus its selected model, not hardware in isolation.
+- Heterogeneous routing uses a workflow plan warmed at service startup, not a new context-aware placement decision for every request.
 
 ## Hardware roles
 
-Red Hat OpenShift AI and Red Hat AI Inference provide the deployment, serving, lifecycle, and common API contract. The live reference deployment uses Intel Xeon CPU and Intel Gaudi 3. Intel Xeon and AMD EPYC are supported CPU options; NVIDIA GPUs, AMD Instinct GPUs, and Intel Gaudi accelerators are options where supported by the installed Red Hat AI release. The response records the provider and whether that identity was observed or declared.
+Red Hat OpenShift AI and Red Hat AI Inference provide the deployment, serving, lifecycle, and common API contract. The current live reference deployment uses Intel Xeon CPU and Intel Gaudi 3. The framework is designed to be redeployed and qualified later in AMD and NVIDIA environments; it does not require all three environments to be reachable at once. Each response records the vendor, product, support status, target identifier, and whether hardware identity was observed or declared.
+
+Cross-provider comparison is retrospective: export the versioned `placement-evidence/v1` response from each qualified environment, then compare saved records by timestamp and environment. Set `QUALIFICATION_ENVIRONMENT_ID` and `QUALIFICATION_ENVIRONMENT_LABEL` for every deployment. Never label saved AMD, Intel, and NVIDIA runs as one simultaneous live test.
 
 ## OpenShift
 

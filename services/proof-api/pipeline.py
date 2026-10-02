@@ -10,7 +10,7 @@ from dataclasses import dataclass, replace
 
 import httpx
 
-from models import Entity, ExecutionPolicy, ModelOption, PipelineResult, StepLog
+from models import Entity, ExecutionPolicy, HardwareEvidence, ModelOption, PipelineResult, StepLog
 from verticals import VERTICALS, VerticalSpec
 
 logger = logging.getLogger("proof-api.routing")
@@ -33,6 +33,11 @@ class ModelEndpoint:
     base_url: str
     provider: str
     runtime: str
+    vendor: str = "other"
+    product: str = ""
+    identity_source: str = "declared"
+    support_status: str = "unknown"
+    target_id: str = ""
 
 
 def _endpoint_map(env_name: str, fallback: dict) -> dict[str, ModelEndpoint]:
@@ -45,6 +50,11 @@ def _endpoint_map(env_name: str, fallback: dict) -> dict[str, ModelEndpoint]:
             base_url=value["base_url"],
             provider=value.get("provider", "unverified compute"),
             runtime=value.get("runtime", "Red Hat AI Inference"),
+            vendor=value.get("vendor", "other"),
+            product=value.get("product", value.get("provider", "unverified compute")),
+            identity_source=value.get("identity_source", "declared"),
+            support_status=value.get("support_status", "unknown"),
+            target_id=value.get("target_id", ""),
         )
         for model_id, value in configured.items()
         if value.get("base_url")
@@ -111,7 +121,11 @@ async def model_options() -> tuple[list[ModelOption], list[ModelOption]]:
                 available = item.id in {model.get("id") for model in response.json().get("data", [])}
         except Exception:
             pass
-        return ModelOption(id=item.id, label=item.label, hardware=hardware, provider=item.provider, runtime=item.runtime, available=available)
+        return ModelOption(
+            id=item.id, label=item.label, hardware=hardware, provider=item.provider, runtime=item.runtime,
+            vendor=item.vendor, product=item.product, identity_source=item.identity_source,
+            support_status=item.support_status, target_id=item.target_id, available=available,
+        )
 
     cpu = await asyncio.gather(*(option(item, "cpu") for item in CPU_ENDPOINTS.values()))
     accelerator = await asyncio.gather(*(option(item, "gpu") for item in GPU_ENDPOINTS.values()))
@@ -268,7 +282,15 @@ async def _chat(node: str, target: Target, prompt: str, max_tokens: int) -> Step
         model=payload.get("model") or target.model,
         accelerator=target.hardware,
         hardware_provider=target.provider,
-        hardware_identity_source="declared",
+        hardware_identity_source=endpoint.identity_source,
+        hardware=HardwareEvidence(
+            tier="accelerator" if target.hardware == "gpu" else "cpu",
+            vendor=endpoint.vendor,
+            product=endpoint.product or endpoint.provider,
+            identity_source=endpoint.identity_source,
+            support_status=endpoint.support_status,
+            target_id=endpoint.target_id,
+        ),
         inference_runtime=target.runtime,
         route=target.route,
         route_confidence=target.confidence,
@@ -331,6 +353,10 @@ async def _tool_evidence(vertical_id: str, entities: list[Entity]) -> tuple[list
         accelerator="tool",
         hardware_provider="Red Hat application service",
         hardware_identity_source="not_applicable",
+        hardware=HardwareEvidence(
+            tier="tool", vendor="not_applicable", product="MCP JSON-RPC",
+            identity_source="not_applicable", support_status="not_applicable",
+        ),
         inference_runtime="MCP JSON-RPC",
         route="deterministic_tool",
         route_confidence=1,

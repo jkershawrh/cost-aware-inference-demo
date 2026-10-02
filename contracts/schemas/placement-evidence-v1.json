@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://redhat.com/schemas/cost-aware-inference/placement-evidence-v1.json",
+  "title": "Cost-aware inference placement evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "run_id", "comparison_kind", "measurement_scope",
+    "routing_behavior", "quality_scope", "environment", "vertical", "case_id", "case_title",
+    "collected_at", "policies_run", "runs"
+  ],
+  "properties": {
+    "schema_version": { "const": "placement-evidence/v1" },
+    "run_id": { "type": "string", "format": "uuid" },
+    "comparison_kind": { "const": "policy_plus_model" },
+    "measurement_scope": { "const": "single_environment" },
+    "routing_behavior": { "const": "warmed_workflow_plan" },
+    "quality_scope": { "const": "named_case_only" },
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "collection_mode", "vendors"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "label": { "type": "string", "minLength": 1 },
+        "collection_mode": { "const": "live_single_environment" },
+        "vendors": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "enum": ["intel", "amd", "nvidia", "other"] }
+        }
+      }
+    },
+    "vertical": { "type": "string", "minLength": 1 },
+    "case_id": { "type": "string", "minLength": 1 },
+    "case_title": { "type": "string", "minLength": 1 },
+    "collected_at": { "type": "string", "format": "date-time" },
+    "policies_run": { "type": "integer", "minimum": 1 },
+    "runs": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/policyRun" }
+    }
+  },
+  "$defs": {
+    "hardwareEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tier", "vendor", "product", "identity_source", "support_status", "target_id"],
+      "properties": {
+        "tier": { "enum": ["cpu", "accelerator", "tool"] },
+        "vendor": { "enum": ["intel", "amd", "nvidia", "other", "not_applicable"] },
+        "product": { "type": "string" },
+        "identity_source": { "enum": ["observed", "declared", "not_applicable"] },
+        "support_status": { "enum": ["supported", "technology_preview", "unknown", "not_applicable"] },
+        "target_id": { "type": "string" }
+      }
+    },
+    "stepLog": {
+      "type": "object",
+      "required": ["node", "model", "accelerator", "hardware", "latency_ms", "prompt", "output", "source_state"],
+      "properties": {
+        "node": { "type": "string" },
+        "model": { "type": "string" },
+        "accelerator": { "enum": ["cpu", "gpu", "tool"] },
+        "hardware": { "$ref": "#/$defs/hardwareEvidence" },
+        "latency_ms": { "type": "integer", "minimum": 0 },
+        "prompt": { "type": "string" },
+        "output": { "type": "string" },
+        "source_state": { "enum": ["live", "rehearsal"] }
+      }
+    },
+    "modeledCost": {
+      "type": "object",
+      "required": ["cost_per_task_usd", "cost_per_1000_tasks_usd", "assumptions", "label", "method", "exclusions"],
+      "properties": {
+        "cost_per_task_usd": { "type": "number", "minimum": 0 },
+        "cost_per_1000_tasks_usd": { "type": "number", "minimum": 0 },
+        "label": { "const": "Execution-cost proxy" },
+        "method": { "type": "string" },
+        "exclusions": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+        "assumptions": {
+          "type": "object",
+          "required": ["cpu_already_provisioned", "cpu_hourly_usd", "accelerator_hourly_usd"],
+          "properties": {
+            "cpu_already_provisioned": { "type": "boolean" },
+            "cpu_hourly_usd": { "type": "number", "minimum": 0 },
+            "accelerator_hourly_usd": { "type": "number", "minimum": 0 }
+          }
+        }
+      }
+    },
+    "policyRun": {
+      "type": "object",
+      "required": ["policy", "status", "source_state"],
+      "properties": {
+        "policy": { "enum": ["cpu_only", "gpu_only", "heterogeneous"] },
+        "status": { "enum": ["completed", "unavailable", "failed"] },
+        "source_state": { "enum": ["live", "mixed", "unavailable"] },
+        "result": {
+          "type": ["object", "null"],
+          "properties": {
+            "inference_log": { "type": "array", "items": { "$ref": "#/$defs/stepLog" } }
+          }
+        },
+        "modeled_cost": { "anyOf": [{ "$ref": "#/$defs/modeledCost" }, { "type": "null" }] },
+        "evaluation": { "type": ["object", "null"] },
+        "error": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

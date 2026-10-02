@@ -9,6 +9,14 @@ export interface BakeoffStep {
   model: string
   accelerator: 'cpu' | 'gpu' | 'tool'
   hardware_provider: string
+  hardware?: {
+    tier: 'cpu' | 'accelerator' | 'tool'
+    vendor: 'intel' | 'amd' | 'nvidia' | 'other' | 'not_applicable'
+    product: string
+    identity_source: 'observed' | 'declared' | 'not_applicable'
+    support_status: 'supported' | 'technology_preview' | 'unknown' | 'not_applicable'
+    target_id: string
+  }
   latency_ms: number
   route: string
   prompt: string
@@ -21,7 +29,7 @@ export interface BakeoffRun {
   status: 'running' | 'completed' | 'unavailable' | 'failed'
   source_state: 'live' | 'mixed' | 'unavailable'
   error?: string
-  modeled_cost?: { cost_per_task_usd: number; cost_per_1000_tasks_usd: number }
+  modeled_cost?: { cost_per_task_usd: number; cost_per_1000_tasks_usd: number; label?: string; method?: string; exclusions?: string[] }
   evaluation?: {
     score_pct: number
     threshold_pct: number
@@ -42,6 +50,18 @@ export interface BakeoffRun {
 }
 
 export interface BakeoffResponse extends Record<string, unknown> {
+  schema_version?: 'placement-evidence/v1'
+  run_id?: string
+  comparison_kind?: 'policy_plus_model'
+  measurement_scope?: 'single_environment'
+  routing_behavior?: 'warmed_workflow_plan'
+  quality_scope?: 'named_case_only'
+  environment?: {
+    id: string
+    label: string
+    collection_mode: 'live_single_environment'
+    vendors: Array<'intel' | 'amd' | 'nvidia' | 'other'>
+  }
   sourceState?: 'live' | 'mixed' | 'rehearsal' | 'offline'
   vertical: string
   case_id: string
@@ -53,8 +73,8 @@ export interface BakeoffResponse extends Record<string, unknown> {
 
 export interface BakeoffCatalog {
   verticals: Array<{ id: 'healthcare' | 'financial_services'; label: string; description: string; cases: Array<{ id: string; title: string }> }>
-  cpu_models: Array<{ id: string; label: string; provider: string; runtime: string; available: boolean }>
-  accelerator_models: Array<{ id: string; label: string; provider: string; runtime: string; available: boolean }>
+  cpu_models: Array<{ id: string; label: string; provider: string; runtime: string; vendor?: 'intel' | 'amd' | 'nvidia' | 'other'; product?: string; identity_source?: 'observed' | 'declared'; support_status?: 'supported' | 'technology_preview' | 'unknown'; target_id?: string; available: boolean }>
+  accelerator_models: Array<{ id: string; label: string; provider: string; runtime: string; vendor?: 'intel' | 'amd' | 'nvidia' | 'other'; product?: string; identity_source?: 'observed' | 'declared'; support_status?: 'supported' | 'technology_preview' | 'unknown'; target_id?: string; available: boolean }>
 }
 
 const labels = { cpu_only: 'CPU only', gpu_only: 'Accelerator only', heterogeneous: 'Heterogeneous' }
@@ -140,7 +160,7 @@ export function BakeoffLive() {
             body: JSON.stringify({
               vertical, case_id: selectedCase.id, cpu_model: cpuModel, accelerator_model: acceleratorModel,
               policies: [policy], quality_threshold_pct: 80,
-              cost_assumptions: { cpu_already_provisioned: cpuExisting, cpu_hourly_usd: cpuHourly, gpu_hourly_usd: gpuHourly },
+              cost_assumptions: { cpu_already_provisioned: cpuExisting, cpu_hourly_usd: cpuHourly, accelerator_hourly_usd: gpuHourly },
             }),
           })
           if (!response.ok) throw new Error(`Proof API returned HTTP ${response.status}`)
@@ -163,7 +183,12 @@ export function BakeoffLive() {
           ...current,
           source,
           error: [current.error, ...errors].filter(Boolean).join(' · ') || undefined,
-          data: { ...current.data, collected_at: state.data!.collected_at, runs: current.data.runs.map((item) => item.policy === policy ? lane : item) },
+          data: {
+            ...current.data,
+            environment: state.data!.environment ?? current.data.environment,
+            collected_at: state.data!.collected_at,
+            runs: current.data.runs.map((item) => item.policy === policy ? lane : item),
+          },
         }
         setCachedProof('latest-bakeoff', next)
         return next
@@ -180,8 +205,12 @@ export function BakeoffLive() {
   const selectedRun = proof.data?.runs.find((item) => item.policy === selected)
 
   const verticalInfo = catalog.verticals.find((item) => item.id === vertical) ?? catalog.verticals[0]
+  const selectedCpu = catalog.cpu_models.find((item) => item.id === cpuModel) ?? catalog.cpu_models[0]
+  const selectedAccelerator = catalog.accelerator_models.find((item) => item.id === acceleratorModel) ?? catalog.accelerator_models[0]
+  const liveVendors = [...new Set([selectedCpu?.vendor, selectedAccelerator?.vendor].filter((vendor): vendor is 'intel' | 'amd' | 'nvidia' => Boolean(vendor && vendor !== 'other')))]
+  const vendorLogo = (vendor: 'intel' | 'amd' | 'nvidia') => vendor === 'intel' ? '/logos/intel.png' : `/logos/${vendor}.svg`
 
-  return <SceneFrame scene={{ id: 'bakeoff-live', beat: 'live-proof', eyebrow: `Live ${verticalInfo.label} workload`, title: 'One task. Three compute policies. One acceptance rule.', body: 'Choose the workload and real model endpoints, run all three lanes in parallel, then inspect prompts, responses, routes, latency, modeled cost, and case-specific quality.' }}>
+  return <SceneFrame scene={{ id: 'bakeoff-live', beat: 'live-proof', eyebrow: `Live ${verticalInfo.label} workload`, title: 'One task. Three compute policies. One acceptance rule.', body: 'Choose the workload and real model endpoints, run all three lanes in parallel, then inspect prompts, responses, routes, latency, the execution-cost proxy, and case-specific quality.' }}>
     <div className="bakeoff-shell" onClick={(event) => event.stopPropagation()}>
       <div className="bakeoff-toolbar">
         <fieldset className="toolbar-group toolbar-workload">
@@ -211,18 +240,18 @@ export function BakeoffLive() {
       <div className="hardware-portability" aria-label="Compute hardware context">
         <div className="hardware-current">
           <span>LIVE ON THIS CLUSTER</span>
-          <img src="/logos/intel.png" alt="Intel" />
-          <strong>Xeon CPU + Gaudi 3</strong>
+          {liveVendors.map((vendor) => <img key={vendor} src={vendorLogo(vendor)} alt={`${vendor.toUpperCase()} live`} />)}
+          <strong>{selectedCpu?.product || selectedCpu?.provider} + {selectedAccelerator?.product || selectedAccelerator?.provider}</strong>
         </div>
         <div className="hardware-targets">
-          <span>SUPPORTED TARGETS</span>
+          <span>QUALIFICATION ROADMAP</span>
           <div className="vendor-badges" aria-label="Intel, AMD, and NVIDIA compute options">
             <span className="vendor-badge"><img src="/logos/intel.png" alt="Intel" /></span>
             <span className="vendor-badge"><img src="/logos/amd.svg" alt="AMD" /></span>
             <span className="vendor-badge vendor-badge-nvidia"><img src="/logos/nvidia.svg" alt="NVIDIA" /></span>
           </div>
         </div>
-        <small>This run uses Intel hardware. The same Red Hat AI Inference API contract can target supported Intel or AMD CPUs, NVIDIA or AMD GPUs, and Intel Gaudi accelerators.</small>
+          <small>This live run uses the selected environment only. The framework can be redeployed and qualified later on Intel, AMD, or NVIDIA environments using the same Red Hat AI Inference API contract; saved runs are labeled by environment and timestamp.</small>
       </div>
 
       {proof.status === 'idle' && <div className="bakeoff-idle"><div className="bakeoff-flow"><span>CLASSIFY</span><b>→</b><span>EXTRACT</span><b>→</b><span>MCP EVIDENCE</span><b>→</b><span>SUMMARIZE</span></div><strong>{verticalInfo.description}</strong><small>The same checked-in case and selected models enter all three lanes. Cost inputs are assumptions; quality is scoped to this case.</small></div>}
@@ -235,9 +264,9 @@ export function BakeoffLive() {
             const cpuCalls = item.result?.inference_log.filter((step) => step.accelerator === 'cpu').length ?? 0
             const gpuCalls = item.result?.inference_log.filter((step) => step.accelerator === 'gpu').length ?? 0
             return <button className={`bakeoff-lane ${selected === item.policy ? 'selected' : ''} ${winner?.policy === item.policy ? 'winner' : ''}`} key={item.policy} onClick={() => setSelected(item.policy)}>
-              <header><span>{labels[item.policy]}</span>{winner?.policy === item.policy && <b>LOWEST COST PASS</b>}</header>
+              <header><span>{labels[item.policy]}</span>{winner?.policy === item.policy && <b>LOWEST PROXY PASS</b>}</header>
               {item.status !== 'completed' ? <div className={`lane-unavailable lane-${item.status}`}><strong>{item.status}</strong><small>{item.status === 'running' ? 'This lane is returning independently.' : item.error}</small></div> : <>
-                <div className="lane-metrics"><div><small>Execution</small><strong>{item.result?.execution_ms}ms</strong>{Boolean(item.result?.routing_ms) && <small>+ {item.result?.routing_ms}ms route plan</small>}</div><div><small>Cost / 1K</small><strong>${item.modeled_cost?.cost_per_1000_tasks_usd.toFixed(2)}</strong></div><div><small>Eval score</small><strong className={item.evaluation?.passed ? 'pass' : 'fail'}>{item.evaluation?.score_pct}%</strong></div></div>
+                <div className="lane-metrics"><div><small>Execution</small><strong>{item.result?.execution_ms}ms</strong>{Boolean(item.result?.routing_ms) && <small>+ {item.result?.routing_ms}ms route plan</small>}</div><div><small>Proxy / 1K</small><strong>${item.modeled_cost?.cost_per_1000_tasks_usd.toFixed(2)}</strong></div><div><small>Eval score</small><strong className={item.evaluation?.passed ? 'pass' : 'fail'}>{item.evaluation?.score_pct}%</strong></div></div>
                 {item.evaluation && <EvaluationExplanation evaluation={item.evaluation} />}
                 <div className="lane-route"><span>{cpuCalls} CPU calls</span><span>{gpuCalls} accelerator calls</span></div>
                 <div className="lane-steps">{item.result?.inference_log.filter((step) => step.accelerator !== 'tool').map((step) => <div key={step.node}><span className={step.accelerator}>{step.accelerator}</span><b>{step.node.replace('_', ' ')}</b><small>{step.model} · {step.latency_ms}ms</small></div>)}</div>

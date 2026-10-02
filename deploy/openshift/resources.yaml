@@ -57,12 +57,14 @@ metadata:
   name: proof-api-config
   namespace: cost-aware-inference-demo
 data:
+  QUALIFICATION_ENVIRONMENT_ID: intel-reference
+  QUALIFICATION_ENVIRONMENT_LABEL: Intel Xeon + Gaudi 3 reference environment
   DEFAULT_CPU_MODEL: qwen25-3b-cpu
   DEFAULT_ACCELERATOR_MODEL: gaudi-llama-31-8b
   CPU_MODEL_ENDPOINTS_JSON: >-
-    {"qwen25-3b-cpu":{"label":"Qwen 2.5 3B Instruct · Xeon","base_url":"http://qwen25-3b-cpu-predictor:8080","provider":"Intel Xeon CPU (declared by the OpenShift AI hardware profile)","runtime":"Red Hat AI Inference vLLM CPU runtime"}}
+    {"qwen25-3b-cpu":{"label":"Qwen 2.5 3B Instruct · Xeon","base_url":"http://qwen25-3b-cpu-predictor:8080","provider":"Intel Xeon CPU (declared by the OpenShift AI hardware profile)","runtime":"Red Hat AI Inference vLLM CPU runtime","vendor":"intel","product":"Xeon","identity_source":"declared","support_status":"supported","target_id":"openshift-ai-cpu"}}
   ACCELERATOR_MODEL_ENDPOINTS_JSON: >-
-    {"gaudi-llama-31-8b":{"label":"Llama 3.1 8B · Gaudi 3","base_url":"http://gaudi-llama-31-8b-predictor:8080","provider":"Intel Gaudi 3 accelerator (observed by OpenShift device allocation)","runtime":"Red Hat AI Inference vLLM Gaudi runtime"},"gaudi-granite-31-8b":{"label":"Granite 3.1 8B LAB · Gaudi 3","base_url":"http://gaudi-granite-31-8b-predictor:8080","provider":"Intel Gaudi 3 accelerator (observed by OpenShift device allocation)","runtime":"Red Hat AI Inference vLLM Gaudi runtime"}}
+    {"gaudi-llama-31-8b":{"label":"Llama 3.1 8B · Gaudi 3","base_url":"http://gaudi-llama-31-8b-predictor:8080","provider":"Intel Gaudi 3 accelerator (observed by OpenShift device allocation)","runtime":"Red Hat AI Inference vLLM Gaudi runtime","vendor":"intel","product":"Gaudi 3","identity_source":"observed","support_status":"technology_preview","target_id":"openshift-ai-gaudi"},"gaudi-granite-31-8b":{"label":"Granite 3.1 8B LAB · Gaudi 3","base_url":"http://gaudi-granite-31-8b-predictor:8080","provider":"Intel Gaudi 3 accelerator (observed by OpenShift device allocation)","runtime":"Red Hat AI Inference vLLM Gaudi runtime","vendor":"intel","product":"Gaudi 3","identity_source":"observed","support_status":"technology_preview","target_id":"openshift-ai-gaudi"}}
   CPU_API_BASE: http://qwen25-3b-cpu-predictor:8080
   CPU_CLASSIFY_MODEL: qwen25-3b-cpu
   CPU_NER_MODEL: qwen25-3b-cpu

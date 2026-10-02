@@ -49,22 +49,22 @@ export function BakeoffResolution() {
 
       <div className="resolution-lanes">
         {completed.map((run) => <article className={`resolution-lane ${lowestCost?.policy === run.policy ? 'selected' : ''}`} key={run.policy}>
-          <header><span>{labels[run.policy]}</span>{lowestCost?.policy === run.policy && <b>LOWEST-COST PASS</b>}</header>
+          <header><span>{labels[run.policy]}</span>{lowestCost?.policy === run.policy && <b>LOWEST-PROXY PASS</b>}</header>
           <strong>{placement(run)}</strong>
           <div className="resolution-metrics">
             <div><span>Execution</span><b>{run.result!.execution_ms}ms</b></div>
-            <div><span>Cost / 1K</span><b>${run.modeled_cost!.cost_per_1000_tasks_usd.toFixed(2)}</b></div>
+            <div><span>Proxy / 1K</span><b>${run.modeled_cost!.cost_per_1000_tasks_usd.toFixed(2)}</b></div>
             <div><span>Quality</span><b>{run.evaluation!.score_pct}%</b></div>
           </div>
           <EvaluationExplanation evaluation={run.evaluation!} />
-          <small>{run.policy === 'cpu_only' ? 'Lowest infrastructure cost when CPU capacity already exists.' : run.policy === 'gpu_only' ? 'Maximum acceleration, with accelerator cost on every model call.' : 'Structured work on CPU; harder synthesis on the accelerator.'}</small>
+          <small>{run.policy === 'cpu_only' ? 'Zero acquisition charge in this proxy when CPU capacity already exists; power and operations are excluded.' : run.policy === 'gpu_only' ? 'Every model call uses the selected accelerator rate assumption.' : 'Structured work on CPU; harder synthesis on the accelerator.'}</small>
         </article>)}
       </div>
 
       <div className="resolution-decision">
         <span>WHAT THE RESULT MEANS</span>
-        <strong>{lowestCost ? `${labels[lowestCost.policy]} is the lowest-cost policy that passed quality.` : 'No policy cleared the quality gate.'}</strong>
-        {fastest && <small>{labels[fastest.policy]} was fastest. Speed and lowest acceptable cost are different decisions.</small>}
+        <strong>{lowestCost ? `${labels[lowestCost.policy]} has the lowest execution-cost proxy among policies that passed quality.` : 'No policy cleared the quality gate.'}</strong>
+        {fastest && <small>{labels[fastest.policy]} was fastest. This proxy excludes utilization, queueing, power, cooling, acquisition, and operations.</small>}
       </div>
     </div>
   </SceneFrame>

@@ -50,7 +50,7 @@ evidence:
     last_verified: "2026-09-30"
     treatment: Use as architecture scope; label current support status and do not imply every option is present in the live cluster.
   - id: live-bakeoff
-    claim: Three policies returned outputs latency route provenance eval score and modeled cost during this browser session.
+    claim: Three policies returned outputs, latency, route provenance, named-case eval score, and an execution-cost proxy during this browser session.
     classification: live-measurement
     source: POST /api/v1/bakeoff
     owner: Demo runtime

@@ -1,4 +1,5 @@
 import asyncio
+import os
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
@@ -6,7 +7,7 @@ from fastapi import FastAPI, HTTPException
 
 import evaluation
 import pipeline
-from models import BakeoffRequest, BakeoffResponse, CaseOption, CatalogResponse, ExecutionPolicy, PolicyRun, VerticalOption
+from models import BakeoffRequest, BakeoffResponse, CaseOption, CatalogResponse, ExecutionPolicy, PolicyRun, QualificationEnvironment, VerticalOption
 from verticals import VERTICALS, get_vertical
 
 
@@ -91,7 +92,18 @@ async def bakeoff(req: BakeoffRequest):
             return PolicyRun(policy=policy, status="failed", source_state="unavailable", error=detail)
 
     runs = await asyncio.gather(*(run(policy) for policy in req.policies))
+    vendors = sorted({
+        step.hardware.vendor
+        for policy_run in runs if policy_run.result
+        for step in policy_run.result.inference_log
+        if step.hardware.vendor != "not_applicable"
+    })
     return BakeoffResponse(
+        environment=QualificationEnvironment(
+            id=os.environ.get("QUALIFICATION_ENVIRONMENT_ID", "unidentified"),
+            label=os.environ.get("QUALIFICATION_ENVIRONMENT_LABEL", "Unidentified qualification environment"),
+            vendors=vendors,
+        ),
         vertical=vertical.id,
         case_id=req.case_id,
         case_title=case["title"],

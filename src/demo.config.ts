@@ -42,7 +42,7 @@ export const demoConfig: DemoConfig = {
     ] },
     { id: 'proof', label: '03', title: 'Live Bake-off', scenes: [
       { id: 'bakeoff', type: 'custom', beat: 'live-proof', component: BakeoffLive, speakerPrompt: 'State the source badge first. Run all lanes together, compare cost and quality, then open the prompts and outputs.' },
-      { id: 'resolution', type: 'custom', beat: 'trials', component: BakeoffResolution, speakerPrompt: 'First name what was held constant. Then distinguish placement, latency, cost, and quality. The fastest lane and lowest-cost passing lane may not be the same.' },
+      { id: 'resolution', type: 'custom', beat: 'trials', component: BakeoffResolution, speakerPrompt: 'First name what was held constant. Then distinguish placement, latency, execution-cost proxy, and named-case quality. The fastest lane and lowest-proxy passing lane may not be the same.' },
     ] },
     { id: 'mechanism', label: '04', title: 'Why It Works', scenes: [
       { id: 'policy', type: 'mechanisms', beat: 'trials', eyebrow: 'The placement rule', title: 'The routing rule: stay on the least-cost tier that clears the bar', body: 'A step stays on the least-cost tier only while it satisfies the contract.', mechanisms: [

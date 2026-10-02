@@ -49,11 +49,12 @@ describe('SceneRenderer', () => {
   it('identifies the live Intel system and the portable Red Hat compute targets', () => {
     const scene = scenes.find((item) => item.id === 'bakeoff')!
     render(<SceneRenderer scene={scene} brand={demoConfig.brand} />)
-    expect(screen.getByText('Xeon CPU + Gaudi 3')).toBeInTheDocument()
-    expect(screen.getAllByAltText('Intel')).toHaveLength(2)
+    expect(screen.getByText('Xeon + Gaudi 3')).toBeInTheDocument()
+    expect(screen.getByAltText('INTEL live')).toBeInTheDocument()
+    expect(screen.getByAltText('Intel')).toBeInTheDocument()
     expect(screen.getByAltText('AMD')).toBeInTheDocument()
     expect(screen.getByAltText('NVIDIA')).toBeInTheDocument()
-    expect(screen.getByText(/This run uses Intel hardware/)).toBeInTheDocument()
+    expect(screen.getByText(/This live run uses the selected environment only/)).toBeInTheDocument()
   })
 
   it('organizes bake-off controls into workload, models, cost, and compare steps', () => {
@@ -158,8 +159,8 @@ describe('SceneRenderer', () => {
     expect(screen.getByText('HELD CONSTANT')).toBeInTheDocument()
     expect(screen.getByText('Same MCP evidence')).toBeInTheDocument()
     expect(screen.getByText('Same API contract')).toBeInTheDocument()
-    expect(screen.getByText(/lowest-cost policy that passed quality/i)).toBeInTheDocument()
-    expect(screen.getByText(/Speed and lowest acceptable cost are different decisions/i)).toBeInTheDocument()
+    expect(screen.getByText(/lowest execution-cost proxy among policies that passed quality/i)).toBeInTheDocument()
+    expect(screen.getByText(/This proxy excludes utilization, queueing, power, cooling, acquisition, and operations/i)).toBeInTheDocument()
     expect(screen.getAllByText(/^WHY /)).toHaveLength(3)
   })
 

@@ -6,13 +6,13 @@ export const catalogFixture: BakeoffCatalog = {
     { id: 'financial_services', label: 'Financial Services', description: 'Transaction alert triage with customer risk, regulatory, and sanctions evidence.', cases: [{ id: 'wire-alert-001', title: 'High-value international wire with a new beneficiary' }] },
   ],
   cpu_models: [
-    { id: 'qwen25-3b-cpu', label: 'Qwen 2.5 3B Instruct · Xeon', provider: 'Intel Xeon CPU', runtime: 'Red Hat AI Inference vLLM CPU runtime', available: true },
-    { id: 'redhataillama-31-8b-instruct', label: 'Llama 3.1 8B Instruct · Xeon', provider: 'Intel Xeon CPU', runtime: 'Red Hat AI Inference vLLM CPU runtime', available: true },
-    { id: 'redhataigemma-4-26b-a4b-it-sml', label: 'Gemma 4 26B A4B · Xeon', provider: 'Intel Xeon CPU', runtime: 'Red Hat AI Inference vLLM CPU runtime', available: true },
+    { id: 'qwen25-3b-cpu', label: 'Qwen 2.5 3B Instruct · Xeon', provider: 'Intel Xeon CPU', runtime: 'Red Hat AI Inference vLLM CPU runtime', vendor: 'intel', product: 'Xeon', identity_source: 'declared', support_status: 'supported', target_id: 'fixture-intel-cpu', available: true },
+    { id: 'redhataillama-31-8b-instruct', label: 'Llama 3.1 8B Instruct · Xeon', provider: 'Intel Xeon CPU', runtime: 'Red Hat AI Inference vLLM CPU runtime', vendor: 'intel', product: 'Xeon', identity_source: 'declared', support_status: 'supported', target_id: 'fixture-intel-cpu', available: true },
+    { id: 'redhataigemma-4-26b-a4b-it-sml', label: 'Gemma 4 26B A4B · Xeon', provider: 'Intel Xeon CPU', runtime: 'Red Hat AI Inference vLLM CPU runtime', vendor: 'intel', product: 'Xeon', identity_source: 'declared', support_status: 'supported', target_id: 'fixture-intel-cpu', available: true },
   ],
   accelerator_models: [
-    { id: 'gaudi-llama-31-8b', label: 'Llama 3.1 8B · Gaudi 3', provider: 'Intel Gaudi 3', runtime: 'Red Hat AI Inference vLLM Gaudi runtime', available: true },
-    { id: 'gaudi-granite-31-8b', label: 'Granite 3.1 8B LAB · Gaudi 3', provider: 'Intel Gaudi 3', runtime: 'Red Hat AI Inference vLLM Gaudi runtime', available: true },
+    { id: 'gaudi-llama-31-8b', label: 'Llama 3.1 8B · Gaudi 3', provider: 'Intel Gaudi 3', runtime: 'Red Hat AI Inference vLLM Gaudi runtime', vendor: 'intel', product: 'Gaudi 3', identity_source: 'observed', support_status: 'technology_preview', target_id: 'fixture-intel-gaudi', available: true },
+    { id: 'gaudi-granite-31-8b', label: 'Granite 3.1 8B LAB · Gaudi 3', provider: 'Intel Gaudi 3', runtime: 'Red Hat AI Inference vLLM Gaudi runtime', vendor: 'intel', product: 'Gaudi 3', identity_source: 'observed', support_status: 'technology_preview', target_id: 'fixture-intel-gaudi', available: true },
   ],
 }
 

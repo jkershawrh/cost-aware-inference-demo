@@ -1,7 +1,8 @@
 from enum import Enum
 from typing import Literal, Optional
+from uuid import uuid4
 
-from pydantic import BaseModel, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 
 class ExecutionPolicy(str, Enum):
@@ -11,9 +12,15 @@ class ExecutionPolicy(str, Enum):
 
 
 class CostAssumptions(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     cpu_already_provisioned: bool
     cpu_hourly_usd: float = Field(ge=0)
-    gpu_hourly_usd: float = Field(ge=0)
+    accelerator_hourly_usd: float = Field(
+        ge=0,
+        validation_alias=AliasChoices("accelerator_hourly_usd", "gpu_hourly_usd"),
+        description="Hourly assumption for the selected accelerator; accepts legacy gpu_hourly_usd input.",
+    )
 
 
 class BakeoffRequest(BaseModel):
@@ -31,12 +38,22 @@ class Entity(BaseModel):
     type: str
 
 
+class HardwareEvidence(BaseModel):
+    tier: Literal["cpu", "accelerator", "tool"]
+    vendor: Literal["intel", "amd", "nvidia", "other", "not_applicable"]
+    product: str
+    identity_source: Literal["observed", "declared", "not_applicable"]
+    support_status: Literal["supported", "technology_preview", "unknown", "not_applicable"]
+    target_id: str = ""
+
+
 class StepLog(BaseModel):
     node: str
     model: str
     accelerator: Literal["cpu", "gpu", "tool"]
     hardware_provider: str
     hardware_identity_source: Literal["observed", "declared", "not_applicable"]
+    hardware: HardwareEvidence
     inference_runtime: str
     route: str
     route_confidence: float = Field(ge=0, le=1)
@@ -81,7 +98,15 @@ class ModeledCost(BaseModel):
     cost_per_task_usd: float = Field(ge=0)
     cost_per_1000_tasks_usd: float = Field(ge=0)
     assumptions: CostAssumptions
-    method: str = "measured accelerator time multiplied by stated hourly assumptions"
+    label: str = "Execution-cost proxy"
+    method: str = "measured inference latency multiplied by stated hourly assumptions"
+    exclusions: list[str] = Field(default_factory=lambda: [
+        "queue wait",
+        "utilization",
+        "power and cooling",
+        "hardware acquisition and depreciation",
+        "platform and operations labor",
+    ])
 
 
 class PolicyRun(BaseModel):
@@ -94,7 +119,23 @@ class PolicyRun(BaseModel):
     error: Optional[str] = None
 
 
+class QualificationEnvironment(BaseModel):
+    id: str
+    label: str
+    collection_mode: Literal["live_single_environment"] = "live_single_environment"
+    vendors: list[Literal["intel", "amd", "nvidia", "other"]] = Field(default_factory=list)
+
+
 class BakeoffResponse(BaseModel):
+    schema_version: Literal["placement-evidence/v1"] = "placement-evidence/v1"
+    run_id: str = Field(default_factory=lambda: str(uuid4()))
+    comparison_kind: Literal["policy_plus_model"] = "policy_plus_model"
+    measurement_scope: Literal["single_environment"] = "single_environment"
+    routing_behavior: Literal["warmed_workflow_plan"] = "warmed_workflow_plan"
+    quality_scope: Literal["named_case_only"] = "named_case_only"
+    environment: QualificationEnvironment = Field(default_factory=lambda: QualificationEnvironment(
+        id="unidentified", label="Unidentified qualification environment",
+    ))
     vertical: str
     case_id: str
     case_title: str
@@ -109,6 +150,11 @@ class ModelOption(BaseModel):
     hardware: Literal["cpu", "gpu"]
     provider: str
     runtime: str
+    vendor: Literal["intel", "amd", "nvidia", "other"] = "other"
+    product: str = ""
+    identity_source: Literal["observed", "declared"] = "declared"
+    support_status: Literal["supported", "technology_preview", "unknown"] = "unknown"
+    target_id: str = ""
     available: bool = True
 
 

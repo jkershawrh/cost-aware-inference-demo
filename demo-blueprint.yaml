@@ -25,7 +25,7 @@ intent:
   primary_user: Enterprise AI platform leaders, architects, and application owners
   workload: One selected Healthcare or Financial Services case executed under CPU-only, accelerator-only, and heterogeneous routing policies with selected live models
   recognized_problem: Teams compare hardware with tokens per second while agentic applications pay for completed multi-step tasks.
-  audience_decision: Decide whether a measured heterogeneous policy can meet the workload quality threshold at a lower modeled cost than accelerator-only execution.
+  audience_decision: Decide whether a measured heterogeneous policy can meet the named-case quality threshold at a lower execution-cost proxy than accelerator-only execution.
   desired_outcome: Approve a workload-specific proof on Red Hat AI Inference and OpenShift AI instead of standardizing every step on one compute tier.
 
 architecture:
@@ -53,7 +53,7 @@ architecture:
       name: One case through three compute policies
       kind: request
       trigger: Presenter selects a vertical, case, CPU model, and accelerator model, then starts the bake-off.
-      outcome: Three independently sourced outputs, latencies, eval scores, and modeled costs are returned together.
+      outcome: Three independently sourced outputs, latencies, eval scores, and execution-cost proxies are returned together.
       edges:
         - {from: presenter, to: web, purpose: Select case and visible assumptions, protocol: browser event, evidence_ids: [request-assumptions]}
         - {from: web, to: proof-api, purpose: Start three policy runs, protocol: HTTPS POST /api/v1/bakeoff, evidence_ids: [bakeoff-response]}
@@ -106,7 +106,7 @@ decisions:
     status: verified
   - id: acceptance
     owner: Workload owner
-    policy: A lower modeled cost is not acceptable unless the named eval score meets the visible threshold.
+    policy: A lower execution-cost proxy is not acceptable unless the named eval score meets the visible threshold.
     fail_closed_behavior: Report the score and do not name that policy the preferred path.
     status: verified
 
@@ -126,7 +126,7 @@ ai_assessment:
   final_decision_owner: Human workload owner
 
 story_mapping:
-  audience_question: Which selected model and compute policy completes this industry task at acceptable quality latency and modeled cost?
+  audience_question: Which selected model and compute policy completes this industry task at acceptable named-case quality, latency, and execution-cost proxy?
   stakes:
     - Agentic applications multiply model calls so placement choices repeat across every completed task.
     - Standardizing every step on an accelerator can spend premium capacity on short structured work.

@@ -1,7 +1,10 @@
 import asyncio
+import json
+from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from jsonschema import Draft202012Validator, FormatChecker
 
 import evaluation
 import models
@@ -21,6 +24,12 @@ def result(hardware="cpu"):
             node="summarize", model="model", accelerator=hardware, route="test", route_confidence=1,
             hardware_provider="Intel Xeon" if hardware == "cpu" else "NVIDIA GPU",
             hardware_identity_source="declared", inference_runtime="Red Hat AI Inference",
+            hardware=models.HardwareEvidence(
+                tier="cpu" if hardware == "cpu" else "accelerator",
+                vendor="intel" if hardware == "cpu" else "nvidia",
+                product="Xeon" if hardware == "cpu" else "GPU",
+                identity_source="declared", support_status="supported",
+            ),
             route_method="test", router_latency_ms=0, latency_ms=600, prompt_tokens=10, output_tokens=10,
             prompt="in", output="out", source_state="live",
         )],
@@ -46,7 +55,7 @@ def test_eval_explains_a_partial_score_with_the_missing_case_fact():
 
 
 def test_cost_uses_visible_assumptions():
-    assumptions = models.CostAssumptions(cpu_already_provisioned=True, cpu_hourly_usd=4, gpu_hourly_usd=36)
+    assumptions = models.CostAssumptions(cpu_already_provisioned=True, cpu_hourly_usd=4, accelerator_hourly_usd=36)
     assert evaluation.model_cost(result("cpu"), assumptions).cost_per_1000_tasks_usd == 0
     assert evaluation.model_cost(result("gpu"), assumptions).cost_per_1000_tasks_usd == pytest.approx(6, abs=.0001)
 
@@ -141,7 +150,7 @@ async def test_bakeoff_runs_all_policies_in_parallel():
         return result("gpu" if policy == models.ExecutionPolicy.gpu_only else "cpu")
 
     request = models.BakeoffRequest(
-        cost_assumptions=models.CostAssumptions(cpu_already_provisioned=True, cpu_hourly_usd=4, gpu_hourly_usd=36),
+        cost_assumptions=models.CostAssumptions(cpu_already_provisioned=True, cpu_hourly_usd=4, accelerator_hourly_usd=36),
     )
     with patch.object(app.pipeline, "resolve_models", return_value=("cpu-model", "gpu-model")), patch.object(app.pipeline, "run_pipeline", new=AsyncMock(side_effect=fake_pipeline)):
         response = await app.bakeoff(request)
@@ -201,10 +210,73 @@ async def test_missing_gpu_is_explicitly_unavailable():
         return result()
 
     request = models.BakeoffRequest(
-        cost_assumptions=models.CostAssumptions(cpu_already_provisioned=True, cpu_hourly_usd=4, gpu_hourly_usd=36),
+        cost_assumptions=models.CostAssumptions(cpu_already_provisioned=True, cpu_hourly_usd=4, accelerator_hourly_usd=36),
     )
     with patch.object(app.pipeline, "resolve_models", return_value=("cpu-model", "gpu-model")), patch.object(app.pipeline, "run_pipeline", new=AsyncMock(side_effect=fake_pipeline)):
         response = await app.bakeoff(request)
     gpu = next(run for run in response.runs if run.policy == models.ExecutionPolicy.gpu_only)
     assert gpu.status == "unavailable"
     assert gpu.result is None
+
+
+def test_legacy_gpu_hourly_input_is_accepted_but_serializes_provider_neutrally():
+    assumptions = models.CostAssumptions.model_validate({
+        "cpu_already_provisioned": False,
+        "cpu_hourly_usd": 4,
+        "gpu_hourly_usd": 36,
+    })
+    assert assumptions.accelerator_hourly_usd == 36
+    assert "accelerator_hourly_usd" in assumptions.model_dump()
+    assert "gpu_hourly_usd" not in assumptions.model_dump()
+
+
+def test_response_declares_single_environment_evidence_scope():
+    response = models.BakeoffResponse(
+        vertical="healthcare", case_id="discharge-stemi-001", case_title="case",
+        collected_at="2026-10-02T00:00:00Z", policies_run=1,
+        runs=[models.PolicyRun(policy=models.ExecutionPolicy.cpu_only, status="completed", source_state="live", result=result())],
+    )
+    payload = response.model_dump(mode="json")
+    assert payload["schema_version"] == "placement-evidence/v1"
+    assert payload["comparison_kind"] == "policy_plus_model"
+    assert payload["measurement_scope"] == "single_environment"
+    assert payload["routing_behavior"] == "warmed_workflow_plan"
+    assert payload["quality_scope"] == "named_case_only"
+    assert payload["environment"]["collection_mode"] == "live_single_environment"
+    assert payload["runs"][0]["result"]["inference_log"][0]["hardware"]["vendor"] == "intel"
+
+
+@pytest.mark.asyncio
+async def test_bakeoff_records_the_current_environment_and_observed_vendor_set(monkeypatch):
+    import app
+
+    request = models.BakeoffRequest(
+        policies=[models.ExecutionPolicy.cpu_only],
+        cost_assumptions=models.CostAssumptions(
+            cpu_already_provisioned=True, cpu_hourly_usd=4, accelerator_hourly_usd=36,
+        ),
+    )
+    monkeypatch.setenv("QUALIFICATION_ENVIRONMENT_ID", "intel-reference")
+    monkeypatch.setenv("QUALIFICATION_ENVIRONMENT_LABEL", "Intel reference environment")
+    with patch.object(app.pipeline, "resolve_models", return_value=("cpu-model", "gpu-model")), patch.object(app.pipeline, "run_pipeline", new=AsyncMock(return_value=result())):
+        response = await app.bakeoff(request)
+    assert response.environment.id == "intel-reference"
+    assert response.environment.label == "Intel reference environment"
+    assert response.environment.vendors == ["intel"]
+
+
+def test_response_satisfies_versioned_placement_evidence_contract():
+    response = models.BakeoffResponse(
+        vertical="healthcare", case_id="discharge-stemi-001", case_title="case",
+        collected_at="2026-10-02T00:00:00Z", policies_run=1,
+        runs=[models.PolicyRun(
+            policy=models.ExecutionPolicy.cpu_only, status="completed", source_state="live",
+            result=result(), evaluation=evaluation.evaluate("discharge-stemi-001", result(), 80),
+            modeled_cost=evaluation.model_cost(result(), models.CostAssumptions(
+                cpu_already_provisioned=True, cpu_hourly_usd=4, accelerator_hourly_usd=36,
+            )),
+        )],
+    )
+    schema_path = Path(__file__).parents[3] / "contracts" / "schemas" / "placement-evidence-v1.json"
+    schema = json.loads(schema_path.read_text())
+    Draft202012Validator(schema, format_checker=FormatChecker()).validate(response.model_dump(mode="json"))

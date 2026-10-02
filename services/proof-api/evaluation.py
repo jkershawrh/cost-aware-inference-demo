@@ -66,7 +66,7 @@ def model_cost(result: PipelineResult, assumptions: CostAssumptions) -> ModeledC
     for step in result.inference_log:
         if step.accelerator == "tool":
             continue
-        hourly = assumptions.gpu_hourly_usd if step.accelerator == "gpu" else cpu_hourly
+        hourly = assumptions.accelerator_hourly_usd if step.accelerator == "gpu" else cpu_hourly
         total += (step.latency_ms / 3_600_000) * hourly
     return ModeledCost(
         cost_per_task_usd=round(total, 6),
