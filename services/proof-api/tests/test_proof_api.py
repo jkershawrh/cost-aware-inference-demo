@@ -95,7 +95,7 @@ async def test_catalog_exposes_only_configured_model_endpoints(monkeypatch):
     response = await app.catalog()
     assert [model.id for model in response.cpu_models] == ["cpu-a", "cpu-b"]
     assert [model.id for model in response.accelerator_models] == ["gaudi-a"]
-    assert {vertical.id for vertical in response.verticals} == {"healthcare", "financial_services"}
+    assert {vertical.id for vertical in response.verticals} == {"healthcare", "financial_services", "food_manufacturing"}
 
 
 def test_medication_names_are_normalized_before_mcp_lookup():

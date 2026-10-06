@@ -26,6 +26,18 @@ oc -n cost-aware-inference-demo rollout restart deployment/proof-api
 
 ## Qualification evidence
 
+### Bakery demonstration workload
+
+The additive `food_manufacturing` vertical uses case `bakery-batch-001`.
+Its read-only MCP endpoint is `/bakery/mcp` on the proof API; it is co-located,
+not a separate deployed agent. `BAKERY_MCP_URL` defaults to
+`http://127.0.0.1:8090/bakery` and can point to a compatible external service.
+The batch and `BAKE-QA-01/v1` procedure are explicitly synthetic demo records,
+not factory telemetry or approved food-safety guidance. “Live” means measured
+model execution and actual MCP retrieval, not live physical bakery observations.
+Unknown batches or missing evidence fail the lane; no batch release or equipment
+adjustment is performed. Existing healthcare and finance tools are unchanged.
+
 The presenter comparison remains a single run. Qualification is a separate background workflow exposed under **Qualification & export** and through the API:
 
 ```bash

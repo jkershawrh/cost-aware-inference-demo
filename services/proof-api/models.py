@@ -24,7 +24,7 @@ class CostAssumptions(BaseModel):
 
 
 class BakeoffRequest(BaseModel):
-    vertical: Literal["healthcare", "financial_services"] = "healthcare"
+    vertical: Literal["healthcare", "financial_services", "food_manufacturing"] = "healthcare"
     case_id: str = "discharge-stemi-001"
     cpu_model: Optional[str] = None
     accelerator_model: Optional[str] = None
@@ -169,7 +169,7 @@ class CaseOption(BaseModel):
 
 
 class VerticalOption(BaseModel):
-    id: Literal["healthcare", "financial_services"]
+    id: Literal["healthcare", "financial_services", "food_manufacturing"]
     label: str
     description: str
     cases: list[CaseOption]

@@ -12,6 +12,7 @@ from uuid import uuid4
 from fastapi import FastAPI, HTTPException, Response, status
 
 import evaluation
+from bakery import router as bakery_router
 import pipeline
 from models import (
     BakeoffRequest, BakeoffResponse, CaseOption, CatalogResponse, ExecutionPolicy,
@@ -38,6 +39,7 @@ app = FastAPI(
 )
 
 QUALIFICATION_JOBS: dict[str, QualificationJob] = {}
+app.include_router(bakery_router)
 
 
 @app.get("/health")

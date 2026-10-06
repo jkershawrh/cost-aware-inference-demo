@@ -12,6 +12,15 @@ class VerticalSpec:
 
 
 VERTICALS = {
+    "food_manufacturing": VerticalSpec(
+        id="food_manufacturing", label="Food Manufacturing",
+        description="Synthetic bakery batch investigation with versioned procedure evidence and human quality review.",
+        routing_text={
+            "classify": "Classify a production quality incident into one short category.",
+            "extract_entities": "Extract batch ID, production line, temperatures and quality observations into JSON.",
+            "summarize": "Synthesize batch observations and procedure evidence for human quality review without authorizing release.",
+        },
+    ),
     "healthcare": VerticalSpec(
         id="healthcare",
         label="Healthcare",

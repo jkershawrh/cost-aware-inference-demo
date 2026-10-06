@@ -312,25 +312,43 @@ async def _call_mcp_tool(tool_name: str, arguments: dict) -> tuple[dict, str]:
         "method": "tools/call",
         "params": {"name": tool_name, "arguments": arguments},
     }
-    if MCP_GATEWAY_URL:
+    gateway = os.environ.get("BAKERY_MCP_URL", "http://127.0.0.1:8090/bakery") if tool_name == "bakery_batch_evidence" else MCP_GATEWAY_URL
+    if gateway:
         try:
             async with httpx.AsyncClient(timeout=10) as client:
-                response = await client.post(f"{MCP_GATEWAY_URL.rstrip('/')}/mcp", json=request)
+                response = await client.post(f"{gateway.rstrip('/')}/mcp", json=request)
                 response.raise_for_status()
-                payload = response.json().get("result", {})
+                body = response.json()
+                if body.get("error") or body.get("result", {}).get("isError"):
+                    raise ValueError("MCP tool returned an error")
+                payload = body.get("result", {})
             structured = payload.get("structuredContent") or {}
             if not structured and payload.get("content"):
                 structured = json.loads(payload["content"][0]["text"])
+            if not structured:
+                raise ValueError("MCP tool returned no evidence")
             return structured, "live"
         except Exception:
             pass
+    if tool_name == "bakery_batch_evidence":
+        raise RuntimeError("Bakery MCP evidence unavailable; cannot complete a grounded investigation")
     return _rehearsal_tool(tool_name, arguments), "rehearsal"
 
 
 async def _tool_evidence(vertical_id: str, entities: list[Entity]) -> tuple[list[dict], StepLog]:
     started = time.monotonic()
     calls: list[tuple[str, dict]]
-    if vertical_id == "healthcare":
+    if vertical_id == "food_manufacturing":
+        batch_ids = [entity.text for entity in entities if entity.type == "batch_id"]
+        if len(batch_ids) != 1:
+            raise ValueError("Expected one extracted batch_id before retrieving bakery evidence")
+        # Models may include the field label in an otherwise correct identifier.
+        # Normalize only this presentation prefix; never substitute a default batch.
+        match = re.fullmatch(r"(?:batch\s+)?(B-\d+)", batch_ids[0].strip(), re.IGNORECASE)
+        if not match:
+            raise ValueError("Invalid extracted bakery batch identifier")
+        calls = [("bakery_batch_evidence", {"batch_id": match.group(1).upper()})]
+    elif vertical_id == "healthcare":
         medications = [
             normalized for entity in entities if entity.type == "medication"
             if (normalized := normalize_medication_name(entity.text))
@@ -392,7 +410,10 @@ async def run_pipeline(text: str, policy: ExecutionPolicy, vertical: VerticalSpe
     plan = await routing_plan(policy, vertical, cpu_model, accelerator_model)
     logs = []
 
-    if vertical.id == "healthcare":
+    if vertical.id == "food_manufacturing":
+        classify_prompt = "Classify this incident as exactly one of: batch_quality_alert, equipment_maintenance_alert, inventory_alert. Return only the category.\n\n" + text
+        extract_prompt = "Extract the batch ID, production line, observed temperature, target temperature and quality observation. Return only a JSON array of objects with text and type. Use types batch_id, line, observed_temperature, target_temperature, observation.\n\n" + text
+    elif vertical.id == "healthcare":
         classify_prompt = (
             "Classify this clinical document into exactly one category: discharge_summary, progress_note, "
             "lab_report, radiology_report, pathology_report, surgical_note, consultation, prescription. "
@@ -427,7 +448,14 @@ async def run_pipeline(text: str, policy: ExecutionPolicy, vertical: VerticalSpe
         "entities": [entity.model_dump() for entity in entities],
         "tool_evidence": evidence,
     })
-    if vertical.id == "healthcare":
+    if vertical.id == "food_manufacturing":
+        summary_prompt = (
+            "Draft a concise quality-review handoff using only the supplied synthetic incident and MCP evidence. "
+            "Include batch ID, observed and target temperatures, procedure reference, uncertainty and human review. "
+            "Do not claim a confirmed root cause, equipment adjustment or batch release. State that the records are synthetic demo data.\n\n"
+            f"Structured evidence:\n{context}\n\nIncident:\n{text}"
+        )
+    elif vertical.id == "healthcare":
         summary_prompt = (
             "Draft a concise physician handoff summary using only the supplied document and structured evidence. "
             "Preserve important diagnoses, procedures, medications, and interaction risk.\n\n"

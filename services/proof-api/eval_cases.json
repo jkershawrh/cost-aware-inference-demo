@@ -1,4 +1,15 @@
 {
+  "bakery-batch-001": {
+    "vertical": "food_manufacturing",
+    "title": "Why did this bakery batch miss its quality target?",
+    "text": "SYNTHETIC DEMO INCIDENT: Batch B-204 on Oven-2 has uneven browning. The observed oven temperature was 168 C against a recipe target of 180 C. A temperature sensor check is pending. The batch is awaiting human quality review; no release or equipment adjustment has been authorized.",
+    "expected": {
+      "classification": "batch_quality_alert",
+      "entities": ["B-204", "Oven-2", "168", "180", "uneven browning"],
+      "evidence_terms": ["BAKE-QA-01/v1", "human_review_required"],
+      "summary_concepts": ["B-204", "168", "180", "review"]
+    }
+  },
   "discharge-stemi-001": {
     "vertical": "healthcare",
     "title": "Cardiac discharge summary with medication interaction context",
